@@ -7,12 +7,26 @@ import { TaskCard } from '@/components/TaskCard';
 import { TaskDrawer } from '@/components/TaskDrawer';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonLoader } from '@/components/EmptyState';
+import { TaskCalendar } from '@/components/TaskCalendar';
+import { PersonalKPIs } from '@/components/PersonalKPIs';
+import { QuickFilters } from '@/components/QuickFilters';
+import { MobileTaskCard } from '@/components/MobileTaskCard';
+import { Button } from '@/components/ui/button';
 import { useApp } from '@/components/AppProvider';
 
 export default function MyTasksPage() {
   console.log('🎯 MyTasksPage rendering...');
   
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
+  const [view, setView] = useState<'list' | 'calendar'>('list');
+  const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month'>('today');
+  const [quickFilters, setQuickFilters] = useState([
+    { id: 'today', label: 'Today', count: 5, active: false },
+    { id: 'overdue', label: 'Overdue', count: 2, active: false },
+    { id: 'this-week', label: 'This Week', count: 12, active: false },
+    { id: 'high-priority', label: 'High Priority', count: 3, active: false }
+  ]);
+  
   const { filters, updateFilters, activeFiltersCount } = useUrlFilters();
   
   console.log('📊 MyTasksPage - Filters:', filters);
@@ -29,6 +43,28 @@ export default function MyTasksPage() {
   } catch (error) {
     console.error('📊 MyTasksPage - App context error:', error);
     onNewTask = () => console.log('New task clicked');
+  }
+
+  // Handler functions
+  const handleFilterToggle = (filterId: string) => {
+    setQuickFilters(prev => 
+      prev.map(f => f.id === filterId ? { ...f, active: !f.active } : f)
+    )
+  }
+
+  const handleQuickAction = (action: string, task: any) => {
+    console.log('Quick action:', action, task)
+    // TODO: Implement quick actions
+  }
+
+  const handleDateClick = (date: Date) => {
+    console.log('Date clicked:', date)
+    // TODO: Filter tasks by date
+  }
+
+  const handleCreateTask = (date: Date) => {
+    console.log('Create task for:', date)
+    // TODO: Open task creation modal with pre-filled date
   }
 
 
@@ -88,6 +124,71 @@ export default function MyTasksPage() {
 
   return (
     <div className="flex-1 flex flex-col">
+      {/* Personal KPIs */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <PersonalKPIs
+          userId="current-user"
+          timeRange={timeRange}
+          onTimeRangeChange={setTimeRange}
+        />
+      </div>
+      
+      {/* View Toggle and Quick Filters */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <QuickFilters
+            filters={quickFilters}
+            onFilterToggle={handleFilterToggle}
+            onClearAll={() => setQuickFilters(prev => prev.map(f => ({ ...f, active: false })))}
+            onAdvancedFilters={() => console.log('Advanced filters')}
+          />
+          
+          <div className="flex gap-2">
+            <Button
+              variant={view === 'list' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('list')}
+              data-testid="view-list"
+            >
+              List
+            </Button>
+            <Button
+              variant={view === 'calendar' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setView('calendar')}
+              data-testid="view-calendar"
+            >
+              Calendar
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      {view === 'list' ? (
+        <div className="flex-1 p-4">
+          <div className="space-y-3">
+            {sortedTasks.map((task) => (
+              <MobileTaskCard
+                key={task.id}
+                task={task}
+                onTaskClick={setSelectedTask}
+                onQuickAction={handleQuickAction}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 p-4">
+          <TaskCalendar
+            tasks={tasks}
+            onTaskClick={setSelectedTask}
+            onDateClick={handleDateClick}
+            onCreateTask={handleCreateTask}
+          />
+        </div>
+      )}
+
       {/* Header Stats */}
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
@@ -110,70 +211,6 @@ export default function MyTasksPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6">
-        {sortedTasks.length === 0 ? (
-          <EmptyState
-            type={activeFiltersCount > 0 ? 'filters' : 'tasks'}
-            title="No tasks assigned to you"
-            description={activeFiltersCount > 0 
-              ? "No tasks match your current filters. Try adjusting your search criteria."
-              : "You don't have any tasks assigned to you yet. Ask your team to assign you some tasks or create your own."
-            }
-            action={activeFiltersCount > 0 ? {
-              label: 'Clear Filters',
-              onClick: () => updateFilters({
-                assignee: 'me',
-                type: 'all',
-                status: 'all',
-                location: 'all',
-                due: 'all',
-                search: ''
-              })
-            } : {
-              label: 'Create Task',
-              onClick: onNewTask
-            }}
-          />
-        ) : (
-          <div className="space-y-4">
-            {sortedTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => setSelectedTask(task.id)}
-                showQuickActions
-                onStatusChange={async (taskId, status) => {
-                  try {
-                    await updateTaskStatus(taskId, status as any);
-                    console.log('Task status updated successfully');
-                  } catch (error) {
-                    console.error('Failed to update task status:', error);
-                    // TODO: Show error toast
-                  }
-                }}
-                onAssign={async (taskId, assignmentData) => {
-                  try {
-                    await assignTask(taskId, assignmentData);
-                    console.log('Task assigned successfully');
-                  } catch (error) {
-                    console.error('Failed to assign task:', error);
-                    // TODO: Show error toast
-                  }
-                }}
-                onSetDue={(taskId) => {
-                  console.log('Set due:', taskId);
-                  // TODO: Implement actual due date setting
-                }}
-                onSetWaiting={(taskId) => {
-                  console.log('Set waiting:', taskId);
-                  // TODO: Implement actual waiting status
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </main>
 
       {/* Task Drawer */}
       {selectedTask && (
