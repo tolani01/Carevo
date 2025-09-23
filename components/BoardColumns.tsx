@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Plus, MoreHorizontal } from 'lucide-react';
 import { TaskCard, Task } from './TaskCard';
+import { ColumnActionsMenu } from './ColumnActionsMenu';
 import { cn } from '@/lib/utils';
 
 interface BoardColumnsProps {
@@ -20,6 +21,14 @@ interface BoardColumnsProps {
     note?: string;
   }) => void;
   onStatusChange?: (taskId: string, status: string) => void;
+  onSetDue?: (taskId: string) => void;
+  onSetWaiting?: (taskId: string) => void;
+  onAddTask?: (columnId: string) => void;
+  onFilterColumn?: (columnId: string) => void;
+  onSelectAll?: (columnId: string) => void;
+  onExportColumn?: (columnId: string) => void;
+  onShowStats?: (columnId: string) => void;
+  onColumnSettings?: (columnId: string) => void;
 }
 
 const columns = [
@@ -29,7 +38,22 @@ const columns = [
   { id: 'Done', title: 'Done', color: 'bg-green-100' },
 ];
 
-export function BoardColumns({ tasks, onTaskSelect, onTaskCreate, onTaskMove, onTaskAssign, onStatusChange }: BoardColumnsProps) {
+export function BoardColumns({ 
+  tasks, 
+  onTaskSelect, 
+  onTaskCreate, 
+  onTaskMove, 
+  onTaskAssign, 
+  onStatusChange, 
+  onSetDue, 
+  onSetWaiting,
+  onAddTask,
+  onFilterColumn,
+  onSelectAll,
+  onExportColumn,
+  onShowStats,
+  onColumnSettings
+}: BoardColumnsProps) {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
 
@@ -52,13 +76,19 @@ export function BoardColumns({ tasks, onTaskSelect, onTaskCreate, onTaskMove, on
     setDragOverColumn(null);
   };
 
-  const handleDrop = (e: React.DragEvent, columnId: string) => {
+  const handleDrop = async (e: React.DragEvent, columnId: string) => {
     e.preventDefault();
     
     if (draggedTask && onTaskMove) {
       const task = tasks.find(t => t.id === draggedTask);
       if (task && task.status !== columnId) {
+        // Call the task move handler which should update the task status
         onTaskMove(draggedTask, task.status, columnId);
+        
+        // Also call the status change handler if available
+        if (onStatusChange) {
+          await onStatusChange(draggedTask, columnId);
+        }
       }
     }
     
@@ -94,6 +124,7 @@ export function BoardColumns({ tasks, onTaskSelect, onTaskCreate, onTaskMove, on
               "flex-1 min-w-80",
               "task-column"
             )}
+            data-testid={`column-${column.id.toLowerCase()}`}
           >
             <Card className="h-full">
               <CardHeader className="pb-3">
@@ -116,23 +147,17 @@ export function BoardColumns({ tasks, onTaskSelect, onTaskCreate, onTaskMove, on
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onTaskCreate?.(column.id)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <ColumnActionsMenu
+                    columnId={column.id}
+                    columnTitle={column.title}
+                    taskCount={stats.total}
+                    onAddTask={onAddTask || (() => {})}
+                    onFilterColumn={onFilterColumn || (() => {})}
+                    onSelectAll={onSelectAll || (() => {})}
+                    onExportColumn={onExportColumn || (() => {})}
+                    onShowStats={onShowStats || (() => {})}
+                    onColumnSettings={onColumnSettings || (() => {})}
+                  />
                 </div>
               </CardHeader>
               
@@ -161,14 +186,8 @@ export function BoardColumns({ tasks, onTaskSelect, onTaskCreate, onTaskMove, on
                       showQuickActions
                       onStatusChange={onStatusChange}
                       onAssign={onTaskAssign}
-                      onSetDue={(taskId) => {
-                        // Handle set due
-                        console.log('Set due:', taskId);
-                      }}
-                      onSetWaiting={(taskId) => {
-                        // Handle set waiting
-                        console.log('Set waiting:', taskId);
-                      }}
+                      onSetDue={onSetDue}
+                      onSetWaiting={onSetWaiting}
                     />
                   </div>
                 ))}

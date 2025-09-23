@@ -119,6 +119,37 @@ export default function BoardPage() {
     }
   };
 
+  // Column action handlers
+  const handleAddTask = (columnId: string) => {
+    console.log('Adding task to column:', columnId);
+    // TODO: Open task creation modal with pre-filled column
+  };
+
+  const handleFilterColumn = (columnId: string) => {
+    console.log('Filtering column:', columnId);
+    // TODO: Open filter drawer with column-specific filters
+  };
+
+  const handleSelectAll = (columnId: string) => {
+    console.log('Selecting all tasks in column:', columnId);
+    // TODO: Select all tasks in the column
+  };
+
+  const handleExportColumn = (columnId: string) => {
+    console.log('Exporting column:', columnId);
+    // TODO: Export tasks from the column
+  };
+
+  const handleShowStats = (columnId: string) => {
+    console.log('Showing stats for column:', columnId);
+    // TODO: Show column statistics modal
+  };
+
+  const handleColumnSettings = (columnId: string) => {
+    console.log('Opening settings for column:', columnId);
+    // TODO: Open column settings modal
+  };
+
   if (loading) {
     return (
       <div className="flex-1 overflow-y-auto p-6">
@@ -194,6 +225,12 @@ export default function BoardPage() {
             }}
             onSetDue={handleSetDue}
             onSetWaiting={handleSetWaiting}
+            onAddTask={handleAddTask}
+            onFilterColumn={handleFilterColumn}
+            onSelectAll={handleSelectAll}
+            onExportColumn={handleExportColumn}
+            onShowStats={handleShowStats}
+            onColumnSettings={handleColumnSettings}
           />
         )}
       </main>
