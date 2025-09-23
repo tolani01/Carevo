@@ -7,6 +7,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Search, Clock, User, MessageSquare, CheckSquare, Filter, Lightbulb } from 'lucide-react'
 import { searchService } from '../lib/services/search-service'
+import { performanceMonitor } from '../lib/utils/performance-monitor'
 
 interface SearchResultsProps {
   query: string
@@ -28,13 +29,18 @@ export function SearchResults({ query, scope, onResultClick }: SearchResultsProp
   }, [query, scope])
 
   const performSearch = async () => {
+    const startTime = Date.now()
     setIsLoading(true)
+    
     try {
       const searchResults = await searchService.search({
         query: refinedQuery,
         scope,
         limit: 20
       })
+      
+      // Track performance
+      performanceMonitor.trackSearch(refinedQuery, searchResults.results.length, startTime)
       
       setResults(searchResults.results)
       setSuggestions(searchResults.suggestions)
