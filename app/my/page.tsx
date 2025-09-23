@@ -62,6 +62,10 @@ export default function MyTasksPage() {
     // TODO: Filter tasks by date
   }
 
+  const handleTaskClick = (task: any) => {
+    setSelectedTask(task.id);
+  }
+
   const handleCreateTask = (date: Date) => {
     console.log('Create task for:', date)
     // TODO: Open task creation modal with pre-filled date
@@ -182,7 +186,7 @@ export default function MyTasksPage() {
         <div className="flex-1 p-4">
           <TaskCalendar
             tasks={tasks}
-            onTaskClick={setSelectedTask}
+            onTaskClick={handleTaskClick}
             onDateClick={handleDateClick}
             onCreateTask={handleCreateTask}
           />

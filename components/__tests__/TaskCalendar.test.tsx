@@ -1,28 +1,35 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { TaskCalendar } from '../TaskCalendar'
 
+// Use current date for testing
+const today = new Date()
+const todayString = today.toISOString().split('T')[0]
+const tomorrow = new Date(today)
+tomorrow.setDate(tomorrow.getDate() + 1)
+const tomorrowString = tomorrow.toISOString().split('T')[0]
+
 const mockTasks = [
   {
     id: '1',
     title: 'Test Task 1',
-    due_at: '2024-12-25T10:00:00Z',
-    priority: 'high',
+    due_at: `${todayString}T10:00:00Z`,
+    priority: 'high' as const,
     status: 'todo',
     type: 'refill'
   },
   {
     id: '2',
     title: 'Test Task 2',
-    due_at: '2024-12-25T14:00:00Z',
-    priority: 'urgent',
+    due_at: `${todayString}T14:00:00Z`,
+    priority: 'urgent' as const,
     status: 'in-progress',
     type: 'lab'
   },
   {
     id: '3',
     title: 'Test Task 3',
-    due_at: '2024-12-26T09:00:00Z',
-    priority: 'medium',
+    due_at: `${tomorrowString}T09:00:00Z`,
+    priority: 'medium' as const,
     status: 'waiting',
     type: 'callback'
   }
@@ -51,17 +58,18 @@ describe('TaskCalendar', () => {
   it('shows task counts on calendar days', () => {
     render(<TaskCalendar {...mockProps} />)
     
-    // December 25th should show 2 tasks
-    const day25 = screen.getByTestId('calendar-day-2024-12-25')
-    expect(day25).toBeInTheDocument()
-    expect(day25).toHaveTextContent('2')
+    // Today should show 2 tasks
+    const todayElements = screen.getAllByTestId(`calendar-day-${todayString}`)
+    expect(todayElements.length).toBeGreaterThan(0)
+    expect(todayElements[0]).toBeInTheDocument()
+    expect(todayElements[0]).toHaveTextContent('2')
   })
 
   it('calls onDateClick when day is clicked', () => {
     render(<TaskCalendar {...mockProps} />)
     
-    const day25 = screen.getByTestId('calendar-day-2024-12-25')
-    fireEvent.click(day25)
+    const todayElements = screen.getAllByTestId(`calendar-day-${todayString}`)
+    fireEvent.click(todayElements[0])
     
     expect(mockProps.onDateClick).toHaveBeenCalledWith(expect.any(Date))
   })
@@ -69,8 +77,8 @@ describe('TaskCalendar', () => {
   it('calls onCreateTask when add button is clicked', () => {
     render(<TaskCalendar {...mockProps} />)
     
-    const addButton = screen.getByTestId('calendar-add-2024-12-25')
-    fireEvent.click(addButton)
+    const addButtons = screen.getAllByTestId(`calendar-add-${todayString}`)
+    fireEvent.click(addButtons[0])
     
     expect(mockProps.onCreateTask).toHaveBeenCalledWith(expect.any(Date))
   })
@@ -78,37 +86,45 @@ describe('TaskCalendar', () => {
   it('shows task previews with priority colors', () => {
     render(<TaskCalendar {...mockProps} />)
     
-    const day25 = screen.getByTestId('calendar-day-2024-12-25')
-    expect(day25).toHaveTextContent('Test Task 1')
-    expect(day25).toHaveTextContent('Test Task 2')
+    const todayElements = screen.getAllByTestId(`calendar-day-${todayString}`)
+    expect(todayElements[0]).toHaveTextContent('Test Task 1')
+    expect(todayElements[0]).toHaveTextContent('Test Task 2')
   })
 
   it('shows "+ more" when there are more than 2 tasks', () => {
-    render(<TaskCalendar {...mockProps} />)
+    // Add a third task to test the "+ more" functionality
+    const tasksWithMore = [
+      ...mockTasks,
+      {
+        id: '4',
+        title: 'Test Task 4',
+        due_at: `${todayString}T16:00:00Z`,
+        priority: 'low' as const,
+        status: 'todo',
+        type: 'callback'
+      }
+    ]
     
-    const day25 = screen.getByTestId('calendar-day-2024-12-25')
-    expect(day25).toHaveTextContent('+0 more') // Only shows 2 tasks, so +0 more
+    render(<TaskCalendar {...mockProps} tasks={tasksWithMore} />)
+    
+    const todayElements = screen.getAllByTestId(`calendar-day-${todayString}`)
+    expect(todayElements[0]).toHaveTextContent('+1 more') // Shows 2 tasks + 1 more
   })
 
   it('supports keyboard navigation', () => {
     render(<TaskCalendar {...mockProps} />)
     
-    const day25 = screen.getByTestId('calendar-day-2024-12-25')
-    fireEvent.keyDown(day25, { key: 'Enter' })
+    const todayElements = screen.getAllByTestId(`calendar-day-${todayString}`)
+    fireEvent.keyDown(todayElements[0], { key: 'Enter' })
     
     expect(mockProps.onDateClick).toHaveBeenCalledWith(expect.any(Date))
   })
 
   it('highlights today', () => {
-    // Mock today as December 25th
-    const originalDate = global.Date
-    global.Date = jest.fn(() => new originalDate('2024-12-25T12:00:00Z')) as any
-    
     render(<TaskCalendar {...mockProps} />)
     
-    const today = screen.getByTestId('calendar-day-2024-12-25')
-    expect(today).toHaveClass('bg-blue-50')
-    
-    global.Date = originalDate
+    const todayElements = screen.getAllByTestId(`calendar-day-${todayString}`)
+    expect(todayElements.length).toBeGreaterThan(0)
+    expect(todayElements[0]).toHaveClass('bg-blue-50')
   })
 })

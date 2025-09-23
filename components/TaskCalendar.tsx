@@ -9,8 +9,8 @@ import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon } from 'lucid
 interface Task {
   id: string
   title: string
-  due_at?: string
-  priority: 'low' | 'medium' | 'high' | 'urgent'
+  due_at?: string | null
+  priority?: 'low' | 'medium' | 'high' | 'urgent'
   status: string
   type: string
 }

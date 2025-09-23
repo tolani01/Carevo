@@ -1,179 +1,98 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { 
-  MessageSquare, 
-  Plus, 
-  Search, 
-  Hash, 
-  Users,
-  Settings,
-  Archive
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface Channel {
-  id: string;
-  name: string;
-  unreadCount?: number;
-  isActive?: boolean;
-  lastMessage?: {
-    author: string;
-    content: string;
-    timestamp: string;
-  };
-}
+import { useState } from 'react'
+import { Badge } from './ui/badge'
+import { Button } from './ui/button'
+import { Plus } from 'lucide-react'
 
 interface ChannelListProps {
-  channels: Channel[];
-  selectedChannel: string | null;
-  onChannelSelect: (channelId: string) => void;
-  onCreateChannel?: () => void;
+  channels: any[]
+  selectedChannel: any
+  onChannelSelect: (channel: any) => void
+  searchQuery: string
 }
 
-export function ChannelList({ 
-  channels, 
-  selectedChannel, 
-  onChannelSelect, 
-  onCreateChannel 
-}: ChannelListProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
+export function ChannelList({ channels, selectedChannel, onChannelSelect, searchQuery }: ChannelListProps) {
+  const [showNewChat, setShowNewChat] = useState(false)
 
   const filteredChannels = channels.filter(channel =>
-    channel.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    (!channel.isActive || showArchived)
-  );
-
-  const activeChannels = channels.filter(channel => channel.isActive !== false);
-  const archivedChannels = channels.filter(channel => channel.isActive === false);
+    channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    channel.lastMessage?.content.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   return (
-    <div className="flex flex-col h-full bg-white border-r border-gray-200">
-      {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Channels</h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onCreateChannel}
-            className="h-8 w-8 p-0"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-        
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search channels..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+    <div className="flex flex-col h-full">
+      {/* New Chat Button */}
+      <div className="p-3 border-b border-gray-200">
+        <Button
+          onClick={() => setShowNewChat(true)}
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          New Chat
+        </Button>
       </div>
 
-      {/* Channels List */}
+      {/* Channels */}
       <div className="flex-1 overflow-y-auto">
-        {/* Active Channels */}
-        <div className="p-2">
-          <div className="flex items-center justify-between px-2 py-1 mb-2">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Active Channels
-            </h3>
-            <span className="text-xs text-gray-400">{activeChannels.length}</span>
-          </div>
-          
-          <div className="space-y-1">
-            {activeChannels.map((channel) => (
-              <button
-                key={channel.id}
-                onClick={() => onChannelSelect(channel.id)}
-                className={cn(
-                  "w-full flex items-center justify-between p-2 rounded-md text-left transition-colors",
-                  selectedChannel === channel.id
-                    ? "bg-blue-100 text-blue-900"
-                    : "hover:bg-gray-100 text-gray-700"
-                )}
-              >
-                <div className="flex items-center space-x-2 min-w-0 flex-1">
-                  <Hash className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-sm font-medium truncate">
-                    {channel.name}
-                  </span>
-                </div>
-                {channel.unreadCount && channel.unreadCount > 0 && (
-                  <Badge variant="destructive" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                    {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
+        {filteredChannels.map((channel) => (
+          <button
+            key={channel.id}
+            onClick={() => onChannelSelect(channel)}
+            className={`
+              w-full flex items-center p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 text-left
+              ${selectedChannel?.id === channel.id ? 'bg-green-50 border-l-4 border-l-green-500' : ''}
+            `}
+            data-testid="channel-item"
+            aria-label={`Select ${channel.name} channel`}
+            role="button"
+          >
+            {/* Avatar */}
+            <div className="w-12 h-12 bg-gray-300 rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+              <span className="text-gray-600 font-medium">
+                {channel.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+
+            {/* Channel Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-medium text-gray-900 truncate">
+                  {channel.name}
+                </h3>
+                <span className="text-xs text-gray-500 ml-2">
+                  {channel.lastMessage?.timestamp ? 
+                    new Date(channel.lastMessage.timestamp).toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    }) : ''
+                  }
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-600 truncate">
+                  {channel.lastMessage?.content || 'No messages yet'}
+                </p>
+                {channel.unreadCount > 0 && (
+                  <Badge className="bg-green-500 text-white text-xs ml-2 flex-shrink-0">
+                    {channel.unreadCount}
                   </Badge>
                 )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Archived Channels */}
-        {archivedChannels.length > 0 && (
-          <div className="p-2 border-t border-gray-100">
-            <div className="flex items-center justify-between px-2 py-1 mb-2">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                Archived
-              </h3>
-              <button
-                onClick={() => setShowArchived(!showArchived)}
-                className="text-xs text-gray-400 hover:text-gray-600"
-              >
-                {showArchived ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            
-            {showArchived && (
-              <div className="space-y-1">
-                {archivedChannels.map((channel) => (
-                  <button
-                    key={channel.id}
-                    onClick={() => onChannelSelect(channel.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between p-2 rounded-md text-left transition-colors",
-                      selectedChannel === channel.id
-                        ? "bg-blue-100 text-blue-900"
-                        : "hover:bg-gray-100 text-gray-500"
-                    )}
-                  >
-                    <div className="flex items-center space-x-2 min-w-0 flex-1">
-                      <Archive className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-sm font-medium truncate">
-                        {channel.name}
-                      </span>
-                    </div>
-                  </button>
-                ))}
               </div>
+            </div>
+          </button>
+        ))}
+        
+        {filteredChannels.length === 0 && (
+          <div className="p-4 text-center text-gray-500">
+            <p className="text-sm">No channels found</p>
+            {searchQuery && (
+              <p className="text-xs mt-1">Try a different search term</p>
             )}
           </div>
         )}
       </div>
-
-      {/* Footer */}
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <Users className="h-4 w-4" />
-            <span>12 online</span>
-          </div>
-          <div className="flex-1" />
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
     </div>
-  );
+  )
 }
-

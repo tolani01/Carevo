@@ -1,344 +1,180 @@
-'use client';
+'use client'
 
-import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Send, 
-  Paperclip, 
-  Plus, 
-  MoreVertical,
-  User,
-  Clock,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-interface Message {
-  id: string;
-  author: {
-    id: string;
-    name: string;
-    avatar?: string;
-  };
-  content: string;
-  timestamp: string;
-  isOwn?: boolean;
-  taskLinks?: Array<{
-    taskId: string;
-    taskTitle: string;
-  }>;
-}
+import { useState, useRef, useEffect } from 'react'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { MessageBubble } from './MessageBubble'
+import { FileUpload } from './FileUpload'
+import { Paperclip, Send, Smile } from 'lucide-react'
 
 interface ChatPaneProps {
-  channelId: string;
-  channelName?: string;
-  onTaskCreate?: (taskData: { title: string; content: string }) => void;
+  channel: any
+  messages: any[]
+  onSendMessage: (content: string) => void
+  onSendFile: (files: File[]) => void
 }
 
-export function ChatPane({ channelId, channelName, onTaskCreate }: ChatPaneProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [showMentions, setShowMentions] = useState(false);
-  const [mentionQuery, setMentionQuery] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+export function ChatPane({ channel, messages, onSendMessage, onSendFile }: ChatPaneProps) {
+  const [message, setMessage] = useState('')
+  const [showEmoji, setShowEmoji] = useState(false)
+  const [showFileUpload, setShowFileUpload] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Mock users for mentions
-  const users = [
-    { id: '1', name: 'Dr. Smith' },
-    { id: '2', name: 'Dr. Johnson' },
-    { id: '3', name: 'Nurse Williams' },
-    { id: '4', name: 'MA Davis' },
-  ];
-
-  // Mock messages - replace with actual data
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    // Different messages for different channels
-    const channelMessages: { [key: string]: Message[] } = {
-      '1': [
-        {
-          id: '1',
-          author: { id: '1', name: 'Dr. Smith' },
-          content: 'Good morning team! Any updates on the Johnson case?',
-          timestamp: '2024-01-15T09:00:00Z',
-          isOwn: false,
-        },
-        {
-          id: '2',
-          author: { id: '2', name: 'Dr. Johnson' },
-          content: 'I\'ll check the lab results and get back to you by 2 PM.',
-          timestamp: '2024-01-15T09:15:00Z',
-          isOwn: false,
-        },
-        {
-          id: '3',
-          author: { id: '3', name: 'Nurse Williams' },
-          content: 'Patient J.S. called about medication refill. Need to follow up.',
-          timestamp: '2024-01-15T09:30:00Z',
-          isOwn: true,
-          taskLinks: [
-            { taskId: 'task-1', taskTitle: 'Medication refill for J.S.' }
-          ]
-        },
-      ],
-      '2': [
-        {
-          id: '4',
-          author: { id: '4', name: 'MA Davis' },
-          content: 'Patient J.S. called about medication refill',
-          timestamp: '2024-01-15T09:30:00Z',
-          isOwn: false,
-        },
-        {
-          id: '5',
-          author: { id: '1', name: 'Dr. Smith' },
-          content: 'I\'ll handle that refill request right away.',
-          timestamp: '2024-01-15T09:35:00Z',
-          isOwn: true,
-        },
-      ],
-      '3': [
-        {
-          id: '6',
-          author: { id: '5', name: 'Billing Specialist' },
-          content: 'Insurance claim processed successfully',
-          timestamp: '2024-01-15T08:45:00Z',
-          isOwn: false,
-        },
-      ],
-      '4': [
-        {
-          id: '7',
-          author: { id: '2', name: 'Dr. Johnson' },
-          content: 'Lab results are in for patient A.L.',
-          timestamp: '2024-01-14T16:20:00Z',
-          isOwn: false,
-        },
-      ],
-    };
-    
-    setMessages(channelMessages[channelId] || []);
-  }, [channelId]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleSendMessage = () => {
-    if (!newMessage.trim()) return;
-
-    const message: Message = {
-      id: Date.now().toString(),
-      author: { id: 'current-user', name: 'You' },
-      content: newMessage,
-      timestamp: new Date().toISOString(),
-      isOwn: true,
-    };
-
-    setMessages([...messages, message]);
-    setNewMessage('');
-  };
+  const handleSend = () => {
+    if (message.trim()) {
+      onSendMessage(message)
+      setMessage('')
+    }
+  }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    } else if (e.key === '@') {
-      setShowMentions(true);
+      e.preventDefault()
+      handleSend()
     }
-  };
+  }
 
-  const handleMentionSelect = (user: any) => {
-    const beforeCursor = newMessage.substring(0, textareaRef.current?.selectionStart || 0);
-    const afterCursor = newMessage.substring(textareaRef.current?.selectionEnd || 0);
-    const newText = beforeCursor + `@${user.name} ` + afterCursor;
-    setNewMessage(newText);
-    setShowMentions(false);
-    setMentionQuery('');
-  };
+  const handleFileSelect = (files: File[]) => {
+    onSendFile(files)
+    setShowFileUpload(false)
+  }
 
-  const handleCreateTask = (message: Message) => {
-    const taskData = {
-      title: message.content.substring(0, 100) + (message.content.length > 100 ? '...' : ''),
-      content: message.content,
-    };
-    onTaskCreate?.(taskData);
-  };
-
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-
-    if (diffInHours < 1) {
-      return 'Just now';
-    } else if (diffInHours < 24) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
-
-  const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(mentionQuery.toLowerCase())
-  );
+  if (!channel) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">WhatsApp Web</h3>
+          <p className="text-gray-600">Send and receive messages without keeping your phone online.</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-gray-50">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <h2 className="text-lg font-semibold text-gray-900">#{channelName || channelId}</h2>
-            <Badge variant="secondary" className="text-xs">
-              12 members
-            </Badge>
+      <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center">
+            <span className="text-gray-600 font-medium">
+              {channel.name.charAt(0).toUpperCase()}
+            </span>
           </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
+          <div>
+            <h2 className="font-medium text-gray-900">{channel.name}</h2>
+            <p className="text-sm text-gray-500">Online</p>
           </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="p-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+          </Button>
+          <Button variant="ghost" size="sm" className="p-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+          </Button>
+          <Button variant="ghost" size="sm" className="p-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+            </svg>
+          </Button>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              "flex space-x-3",
-              message.isOwn && "flex-row-reverse space-x-reverse"
-            )}
-          >
-            {/* Avatar */}
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 rounded-full bg-gray-300 flex items-center justify-center">
-                <User className="h-4 w-4 text-gray-600" />
-              </div>
-            </div>
-
-            {/* Message Content */}
-            <div className={cn(
-              "flex-1 min-w-0",
-              message.isOwn && "flex flex-col items-end"
-            )}>
-              <div className="flex items-center space-x-2 mb-1">
-                <span className="text-sm font-medium text-gray-900">
-                  {message.author.name}
-                </span>
-                <span className="text-xs text-gray-500">
-                  {formatTimestamp(message.timestamp)}
-                </span>
-                {message.isOwn && (
-                  <CheckCircle2 className="h-3 w-3 text-blue-500" />
-                )}
-              </div>
-
-              <div className={cn(
-                "rounded-lg px-3 py-2 max-w-md",
-                message.isOwn 
-                  ? "bg-blue-500 text-white" 
-                  : "bg-gray-100 text-gray-900"
-              )}>
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              </div>
-
-              {/* Task Links */}
-              {message.taskLinks && message.taskLinks.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  {message.taskLinks.map((link) => (
-                    <div
-                      key={link.taskId}
-                      className="flex items-center space-x-2 p-2 bg-blue-50 border border-blue-200 rounded-md"
-                    >
-                      <AlertCircle className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm text-blue-800">{link.taskTitle}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCreateTask(message)}
-                        className="h-6 px-2 text-xs"
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Create Task
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-100">
+        {messages.map((msg) => (
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            isOwn={msg.sender.id === 'current-user'}
+          />
         ))}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50">
-        <div className="relative">
-          <Textarea
-            ref={textareaRef}
-            value={newMessage}
-            onChange={(e) => {
-              setNewMessage(e.target.value);
-              if (e.target.value.includes('@')) {
-                const atIndex = e.target.value.lastIndexOf('@');
-                const query = e.target.value.substring(atIndex + 1).split(' ')[0];
-                setMentionQuery(query);
-                setShowMentions(query.length > 0);
-              } else {
-                setShowMentions(false);
-              }
-            }}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message... (use @ to mention someone, Enter to send)"
-            className="min-h-[60px] max-h-32 pr-20 bg-white border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-          />
-          
-          {/* Mention Dropdown */}
-          {showMentions && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-              <div className="p-2">
-                <div className="text-xs text-gray-500 mb-2">Mention someone:</div>
-                <div className="space-y-1">
-                  {filteredUsers.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => handleMentionSelect(user)}
-                      className="w-full text-left px-2 py-1 hover:bg-gray-100 rounded text-sm"
-                    >
-                      {user.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
+      {/* File Upload Overlay */}
+      {showFileUpload && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-end z-10">
+          <div className="bg-white w-full p-4 rounded-t-lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-medium">Attach File</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFileUpload(false)}
+              >
+                ✕
+              </Button>
             </div>
-          )}
+            <FileUpload
+              onFileSelect={handleFileSelect}
+              maxFiles={5}
+              maxSize={10}
+            />
+          </div>
+        </div>
+      )}
 
-          <div className="absolute bottom-2 right-2 flex items-center space-x-1">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-gray-100">
-              <Paperclip className="h-4 w-4" />
-            </Button>
+      {/* Message Input */}
+      <div className="bg-white border-t border-gray-200 p-4">
+        <div className="flex items-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowFileUpload(true)}
+            className="p-2"
+            data-testid="attach-button"
+            aria-label="Attach file"
+          >
+            <Paperclip className="h-5 w-5" />
+          </Button>
+          
+          <div className="flex-1 relative">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+              className="pr-10"
+              data-testid="message-input"
+            />
             <Button
-              onClick={handleSendMessage}
-              disabled={!newMessage.trim()}
+              variant="ghost"
               size="sm"
-              className="h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              onClick={() => setShowEmoji(!showEmoji)}
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1"
+              aria-label="Add emoji"
             >
-              <Send className="h-4 w-4" />
+              <Smile className="h-4 w-4" />
             </Button>
           </div>
+          
+          <Button
+            onClick={handleSend}
+            disabled={!message.trim()}
+            className="p-2"
+            data-testid="send-button"
+            aria-label="Send message"
+          >
+            <Send className="h-5 w-5" />
+          </Button>
         </div>
       </div>
     </div>
-  );
+  )
 }
-

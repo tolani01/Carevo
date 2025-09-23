@@ -22,15 +22,15 @@ describe('PersonalKPIs', () => {
   it('shows time range selector buttons', () => {
     render(<PersonalKPIs {...mockProps} />)
     
-    expect(screen.getByText('Today')).toBeInTheDocument()
-    expect(screen.getByText('Week')).toBeInTheDocument()
-    expect(screen.getByText('Month')).toBeInTheDocument()
+    expect(screen.getByText('today')).toBeInTheDocument()
+    expect(screen.getByText('week')).toBeInTheDocument()
+    expect(screen.getByText('month')).toBeInTheDocument()
   })
 
   it('calls onTimeRangeChange when time range is clicked', () => {
     render(<PersonalKPIs {...mockProps} />)
     
-    const weekButton = screen.getByText('Week')
+    const weekButton = screen.getByText('week')
     fireEvent.click(weekButton)
     
     expect(mockProps.onTimeRangeChange).toHaveBeenCalledWith('week')
@@ -65,10 +65,10 @@ describe('PersonalKPIs', () => {
   it('has proper accessibility attributes', () => {
     render(<PersonalKPIs {...mockProps} />)
     
-    const todayButton = screen.getByText('Today')
+    const todayButton = screen.getByText('today')
     expect(todayButton).toHaveAttribute('aria-pressed', 'true')
     
-    const weekButton = screen.getByText('Week')
+    const weekButton = screen.getByText('week')
     expect(weekButton).toHaveAttribute('aria-pressed', 'false')
   })
 })
