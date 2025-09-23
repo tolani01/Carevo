@@ -213,7 +213,7 @@ export default function BoardPage() {
       {/* Filter Chips */}
       <FilterChips
         filters={getFilterChips()}
-        onRemoveFilter={removeEnhancedFilter}
+        onRemoveFilter={(key: string) => removeEnhancedFilter(key as keyof typeof enhancedFilters)}
         onClearAll={clearAllEnhancedFilters}
       />
 

@@ -299,12 +299,9 @@ export function GlobalHeader({
           {/* Search Results */}
           {showSearch && showResults && (
             <SearchResults
-              results={results}
-              isSearching={isSearching}
-              hasSearched={hasSearched}
-              selectedIndex={selectedIndex}
+              query={searchQuery}
+              scope="all"
               onResultClick={handleResultClick}
-              onClose={() => setShowSearch(false)}
             />
           )}
         </div>
