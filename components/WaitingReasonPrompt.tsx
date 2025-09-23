@@ -1,85 +1,100 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Pause, AlertCircle } from 'lucide-react';
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog'
+import { Button } from './ui/button'
+import { Textarea } from './ui/textarea'
+import { Label } from './ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
+import { Clock, AlertCircle } from 'lucide-react'
 
 interface WaitingReasonPromptProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (reason: string, note?: string) => void;
-  taskTitle?: string;
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: (reason: string, note?: string) => void
+  taskTitle?: string
 }
 
 const waitingReasons = [
-  { value: 'OnProvider', label: 'Waiting on Provider', description: 'Need provider approval or decision' },
-  { value: 'OnInsurer', label: 'Waiting on Insurance', description: 'Prior authorization or insurance response' },
-  { value: 'OnPatient', label: 'Waiting on Patient', description: 'Patient response or action required' },
-  { value: 'OnRecords', label: 'Waiting on Records', description: 'Medical records or documentation needed' },
-  { value: 'OnLab', label: 'Waiting on Lab Results', description: 'Laboratory results pending' },
-  { value: 'OnPharmacy', label: 'Waiting on Pharmacy', description: 'Pharmacy response or medication issue' },
-  { value: 'OnExternal', label: 'Waiting on External', description: 'External provider or facility' },
-  { value: 'Other', label: 'Other', description: 'Other reason not listed' }
-];
+  { value: 'waiting-for-patient', label: 'Waiting for Patient Response' },
+  { value: 'waiting-for-provider', label: 'Waiting for Provider' },
+  { value: 'waiting-for-lab', label: 'Waiting for Lab Results' },
+  { value: 'waiting-for-insurance', label: 'Waiting for Insurance' },
+  { value: 'waiting-for-approval', label: 'Waiting for Approval' },
+  { value: 'waiting-for-resources', label: 'Waiting for Resources' },
+  { value: 'other', label: 'Other (specify in notes)' }
+]
 
-export function WaitingReasonPrompt({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  taskTitle 
+export function WaitingReasonPrompt({
+  isOpen,
+  onClose,
+  onConfirm,
+  taskTitle
 }: WaitingReasonPromptProps) {
-  const [selectedReason, setSelectedReason] = useState('');
-  const [note, setNote] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedReason, setSelectedReason] = useState<string>('')
+  const [note, setNote] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string>('')
 
   const handleConfirm = async () => {
-    if (!selectedReason) return;
-    
-    setIsSubmitting(true);
-    try {
-      await onConfirm(selectedReason, note.trim() || undefined);
-      setSelectedReason('');
-      setNote('');
-      onClose();
-    } finally {
-      setIsSubmitting(false);
+    if (!selectedReason) {
+      setError('Please select a waiting reason')
+      return
     }
-  };
+
+    setIsLoading(true)
+    setError('')
+
+    try {
+      await onConfirm(selectedReason, note.trim() || undefined)
+      // Reset form
+      setSelectedReason('')
+      setNote('')
+      onClose()
+    } catch (err) {
+      setError('Failed to update task status. Please try again.')
+      console.error('Error setting waiting reason:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleClose = () => {
-    setSelectedReason('');
-    setNote('');
-    onClose();
-  };
-
-  const selectedReasonData = waitingReasons.find(r => r.value === selectedReason);
+    if (!isLoading) {
+      setSelectedReason('')
+      setNote('')
+      setError('')
+      onClose()
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
-            <Pause className="h-5 w-5 text-orange-600" />
-            <span>Set Task to Waiting</span>
-          </DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Set Waiting Reason
             {taskTitle && (
-              <div className="mt-2 p-3 bg-gray-50 rounded-md">
-                <strong>Task:</strong> {taskTitle}
-              </div>
+              <span className="text-sm text-gray-500 font-normal">
+                for "{taskTitle}"
+              </span>
             )}
-            Please select why this task is waiting and add any additional notes.
-          </DialogDescription>
+          </DialogTitle>
         </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Error Display */}
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-md" role="alert">
+              <AlertCircle className="h-4 w-4 text-red-500" />
+              <span className="text-sm text-red-700">{error}</span>
+            </div>
+          )}
 
-        <div className="space-y-4 py-4">
           {/* Reason Selection */}
           <div className="space-y-2">
-            <Label htmlFor="reason">Waiting Reason *</Label>
+            <Label htmlFor="waiting-reason">Why is this task waiting?</Label>
             <Select value={selectedReason} onValueChange={setSelectedReason}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a reason..." />
@@ -87,10 +102,7 @@ export function WaitingReasonPrompt({
               <SelectContent>
                 {waitingReasons.map((reason) => (
                   <SelectItem key={reason.value} value={reason.value}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{reason.label}</span>
-                      <span className="text-sm text-gray-500">{reason.description}</span>
-                    </div>
+                    {reason.label}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -99,50 +111,35 @@ export function WaitingReasonPrompt({
 
           {/* Additional Notes */}
           <div className="space-y-2">
-            <Label htmlFor="note">Additional Notes (Optional)</Label>
+            <Label htmlFor="waiting-note">Additional Notes (Optional)</Label>
             <Textarea
-              id="note"
-              placeholder="Add any additional context or details..."
+              id="waiting-note"
+              placeholder="Add any additional context..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
+              className="resize-none"
             />
           </div>
-
-          {/* Selected Reason Info */}
-          {selectedReasonData && (
-            <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
-              <div className="flex items-start space-x-2">
-                <AlertCircle className="h-4 w-4 text-orange-600 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-orange-800">
-                    {selectedReasonData.label}
-                  </p>
-                  <p className="text-sm text-orange-700">
-                    {selectedReasonData.description}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-
-        <div className="flex items-center justify-end space-x-2 pt-4 border-t">
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+        
+        {/* Actions */}
+        <div className="flex justify-end gap-2 pt-4">
+          <Button 
+            variant="outline" 
+            onClick={handleClose} 
+            disabled={isLoading}
+          >
             Cancel
           </Button>
           <Button 
-            onClick={handleConfirm} 
-            disabled={!selectedReason || isSubmitting}
-            className="bg-orange-600 hover:bg-orange-700"
+            onClick={handleConfirm}
+            disabled={!selectedReason || isLoading}
           >
-            {isSubmitting && (
-              <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-            )}
-            Set to Waiting
+            {isLoading ? 'Setting...' : 'Set Waiting'}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

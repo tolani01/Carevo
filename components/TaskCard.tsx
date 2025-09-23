@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TaskAssignmentModal } from '@/components/TaskAssignmentModal';
 import { DueDatePicker } from '@/components/ui/due-date-picker';
+import { WaitingReasonPrompt } from '@/components/WaitingReasonPrompt';
 import { 
   Calendar, 
   User, 
@@ -95,6 +96,8 @@ export function TaskCard({
   const [showActions, setShowActions] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [showWaitingPrompt, setShowWaitingPrompt] = useState(false);
+  const [waitingTaskId, setWaitingTaskId] = useState<string | null>(null);
   const isOverdue = task.due_at && new Date(task.due_at) < new Date() && task.status !== 'Done';
   const isDueToday = task.due_at && new Date(task.due_at).toDateString() === new Date().toDateString();
 
@@ -219,7 +222,10 @@ export function TaskCard({
                       {task.status === 'InProgress' && (
                         <button
                           className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                          onClick={(e) => handleQuickAction(e, () => onSetWaiting?.(task.id))}
+                          onClick={(e) => handleQuickAction(e, () => {
+                            setWaitingTaskId(task.id);
+                            setShowWaitingPrompt(true);
+                          })}
                         >
                           <Pause className="mr-2 h-4 w-4" />
                           Set Waiting
@@ -355,6 +361,25 @@ export function TaskCard({
         }}
         taskTitle={task.title}
         currentDueDate={task.due_at}
+      />
+
+      {/* Waiting Reason Prompt */}
+      <WaitingReasonPrompt
+        isOpen={showWaitingPrompt}
+        onClose={() => {
+          setShowWaitingPrompt(false);
+          setWaitingTaskId(null);
+        }}
+        onConfirm={async (reason, note) => {
+          if (waitingTaskId) {
+            console.log('Setting waiting for task:', waitingTaskId, 'reason:', reason, 'note:', note);
+            // TODO: Call API to update task status and waiting reason
+            // await updateTaskWaiting(waitingTaskId, reason, note)
+            setShowWaitingPrompt(false);
+            setWaitingTaskId(null);
+          }
+        }}
+        taskTitle={task.title}
       />
     </Card>
   );
