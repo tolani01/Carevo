@@ -5,6 +5,7 @@ import { BoardColumns } from '@/components/BoardColumns';
 import { FiltersBar } from '@/components/FiltersBar';
 import { TaskDrawer } from '@/components/TaskDrawer';
 import { WaitingReasonPrompt } from '@/components/WaitingReasonPrompt';
+import { DueDatePicker } from '@/components/ui/due-date-picker';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonLoader } from '@/components/EmptyState';
 import { useTasks } from '@/lib/hooks/use-tasks';
@@ -18,6 +19,8 @@ export default function BoardPage() {
   const [showWaitingPrompt, setShowWaitingPrompt] = useState(false);
   const [waitingTaskId, setWaitingTaskId] = useState<string | null>(null);
   const [waitingTaskTitle, setWaitingTaskTitle] = useState<string>('');
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
+  const [dueDateTaskId, setDueDateTaskId] = useState<string | null>(null);
   
   console.log('📊 BoardPage - Getting app context...');
   let appContext;
@@ -64,7 +67,7 @@ export default function BoardPage() {
     };
   }, []);
 
-  const handleTaskMove = (taskId: string, fromColumn: string, toColumn: string) => {
+  const handleTaskMove = async (taskId: string, fromColumn: string, toColumn: string) => {
     if (toColumn === 'Waiting') {
       const task = tasks.find(t => t.id === taskId);
       if (task) {
@@ -73,9 +76,13 @@ export default function BoardPage() {
         setShowWaitingPrompt(true);
       }
     } else {
-      // Handle normal task move
-      console.log('Moving task:', taskId, 'from', fromColumn, 'to', toColumn);
-      // TODO: Implement actual task move
+      // Handle normal task move - update task status
+      try {
+        await updateTaskStatus(taskId, toColumn as any);
+        console.log(`Task ${taskId} moved from ${fromColumn} to ${toColumn}`);
+      } catch (error) {
+        console.error('Failed to update task status:', error);
+      }
     }
   };
 
@@ -86,6 +93,29 @@ export default function BoardPage() {
       setShowWaitingPrompt(false);
       setWaitingTaskId(null);
       setWaitingTaskTitle('');
+    }
+  };
+
+  const handleSetDue = (taskId: string) => {
+    setDueDateTaskId(taskId);
+    setShowDueDatePicker(true);
+  };
+
+  const handleSetWaiting = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setWaitingTaskId(taskId);
+      setWaitingTaskTitle(task.title);
+      setShowWaitingPrompt(true);
+    }
+  };
+
+  const handleDueDateConfirm = (dueDate: string) => {
+    if (dueDateTaskId) {
+      console.log('Setting due date for task:', dueDateTaskId, 'due date:', dueDate);
+      // TODO: Implement actual due date update
+      setShowDueDatePicker(false);
+      setDueDateTaskId(null);
     }
   };
 
@@ -162,6 +192,8 @@ export default function BoardPage() {
                 // TODO: Show error toast
               }
             }}
+            onSetDue={handleSetDue}
+            onSetWaiting={handleSetWaiting}
           />
         )}
       </main>
@@ -180,6 +212,15 @@ export default function BoardPage() {
         onClose={() => setShowWaitingPrompt(false)}
         onConfirm={handleWaitingConfirm}
         taskTitle={waitingTaskTitle}
+      />
+
+      {/* Due Date Picker */}
+      <DueDatePicker
+        isOpen={showDueDatePicker}
+        onClose={() => setShowDueDatePicker(false)}
+        onConfirm={handleDueDateConfirm}
+        taskTitle={dueDateTaskId ? tasks.find(t => t.id === dueDateTaskId)?.title : undefined}
+        currentDueDate={dueDateTaskId ? tasks.find(t => t.id === dueDateTaskId)?.due_at : undefined}
       />
     </div>
   );

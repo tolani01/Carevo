@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TaskAssignmentModal } from '@/components/TaskAssignmentModal';
+import { DueDatePicker } from '@/components/ui/due-date-picker';
 import { 
   Calendar, 
   User, 
@@ -93,6 +94,7 @@ export function TaskCard({
 }: TaskCardProps) {
   const [showActions, setShowActions] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const isOverdue = task.due_at && new Date(task.due_at) < new Date() && task.status !== 'Done';
   const isDueToday = task.due_at && new Date(task.due_at).toDateString() === new Date().toDateString();
 
@@ -161,11 +163,12 @@ export function TaskCard({
       onClick={onClick}
       role="button"
       tabIndex={0}
+      data-testid="task-card"
       aria-label={`Task: ${task.title}. Status: ${task.status}. Due: ${task.due_at ? new Date(task.due_at).toLocaleDateString() : 'No due date'}`}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          onClick();
+          onClick?.();
         }
       }}
     >
@@ -187,6 +190,8 @@ export function TaskCard({
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6"
+                  data-testid="more-actions-button"
+                  aria-label="More actions"
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowActions(!showActions);
@@ -206,7 +211,7 @@ export function TaskCard({
                       </button>
                       <button
                         className="flex w-full items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={(e) => handleQuickAction(e, () => onSetDue?.(task.id))}
+                        onClick={(e) => handleQuickAction(e, () => setShowDueDatePicker(true))}
                       >
                         <Calendar className="mr-2 h-4 w-4" />
                         Set Due Date
@@ -337,6 +342,19 @@ export function TaskCard({
           role: task.assignee.role as any || 'provider',
           department: task.assignee.department || ''
         } : undefined}
+      />
+
+      {/* Due Date Picker */}
+      <DueDatePicker
+        isOpen={showDueDatePicker}
+        onClose={() => setShowDueDatePicker(false)}
+        onConfirm={(dueDate) => {
+          console.log('Due date confirmed for task:', task.id, 'due date:', dueDate);
+          // TODO: Implement actual due date update
+          setShowDueDatePicker(false);
+        }}
+        taskTitle={task.title}
+        currentDueDate={task.due_at}
       />
     </Card>
   );
