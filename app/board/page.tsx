@@ -8,8 +8,12 @@ import { WaitingReasonPrompt } from '@/components/WaitingReasonPrompt';
 import { DueDatePicker } from '@/components/ui/due-date-picker';
 import { EmptyState } from '@/components/EmptyState';
 import { SkeletonLoader } from '@/components/EmptyState';
+import { KPIBar } from '@/components/KPIBar';
+import { KPIModal } from '@/components/KPIModal';
+import { FilterChips } from '@/components/FilterChips';
 import { useTasks } from '@/lib/hooks/use-tasks';
 import { useUrlFilters } from '@/lib/hooks/use-url-filters';
+import { useFilterState } from '@/lib/hooks/use-filter-state';
 import { useApp } from '@/components/AppProvider';
 
 export default function BoardPage() {
@@ -21,6 +25,8 @@ export default function BoardPage() {
   const [waitingTaskTitle, setWaitingTaskTitle] = useState<string>('');
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const [dueDateTaskId, setDueDateTaskId] = useState<string | null>(null);
+  const [showKPIModal, setShowKPIModal] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<string>('');
   
   console.log('📊 BoardPage - Getting app context...');
   let appContext;
@@ -36,6 +42,33 @@ export default function BoardPage() {
   console.log('📊 BoardPage - Getting filters...');
   const { filters, updateFilters, activeFiltersCount } = useUrlFilters();
   console.log('📊 BoardPage - Filters:', filters);
+
+  // Enhanced filter state management
+  const { 
+    filters: enhancedFilters, 
+    updateFilters: updateEnhancedFilters, 
+    clearAllFilters: clearAllEnhancedFilters, 
+    removeFilter: removeEnhancedFilter, 
+    getFilterChips 
+  } = useFilterState();
+
+  // Mock KPI data
+  const kpiMetrics = {
+    completedToday: 47,
+    overdue: 8,
+    dueToday: 23,
+    avgCompletionTime: '2.3h',
+    staffUtilization: 85,
+    revenueAtRisk: 12400,
+    hipaaIncidents: 0,
+    efficiencyImprovement: 12
+  };
+
+  // KPI click handler
+  const handleKPIClick = (metricId: string) => {
+    setSelectedMetric(metricId);
+    setShowKPIModal(true);
+  };
   
   console.log('📊 BoardPage - Getting tasks...');
   const { tasks, loading, error, assignTask, updateTaskStatus } = useTasks(filters);
@@ -171,6 +204,19 @@ export default function BoardPage() {
 
   return (
     <div className="flex-1 flex flex-col board-page">
+      {/* KPI Bar */}
+      <KPIBar 
+        metrics={kpiMetrics} 
+        onMetricClick={handleKPIClick}
+      />
+      
+      {/* Filter Chips */}
+      <FilterChips
+        filters={getFilterChips()}
+        onRemoveFilter={removeEnhancedFilter}
+        onClearAll={clearAllEnhancedFilters}
+      />
+
       {/* Filters Bar */}
       <div className="bg-white border-b border-gray-200 px-4 py-3">
         <FiltersBar 
@@ -258,6 +304,14 @@ export default function BoardPage() {
         onConfirm={handleDueDateConfirm}
         taskTitle={dueDateTaskId ? tasks.find(t => t.id === dueDateTaskId)?.title : undefined}
         currentDueDate={dueDateTaskId ? tasks.find(t => t.id === dueDateTaskId)?.due_at : undefined}
+      />
+
+      {/* KPI Modal */}
+      <KPIModal
+        isOpen={showKPIModal}
+        onClose={() => setShowKPIModal(false)}
+        metricId={selectedMetric}
+        metrics={kpiMetrics}
       />
     </div>
   );
