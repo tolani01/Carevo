@@ -4,6 +4,35 @@ A modern, accessible task management system designed for outpatient clinics. Bui
 
 ## 🚀 **Recent Updates**
 
+### **Sprint 2: Search & KPIs** ✅ (Weeks 3-4)
+- **Semantic Search**: AI-powered natural language search with intelligent suggestions
+  - Natural language query processing (intent, entities, time ranges)
+  - AI understanding with query analysis cards
+  - Multi-entity search (tasks, messages, users)
+  - Relevance scoring and result ranking
+  - Intelligent search suggestions based on query content
+
+- **KPI Dashboard**: Interactive metrics dashboard for clinic oversight
+  - Real-time metrics display (completed, overdue, due today, etc.)
+  - Interactive KPI tiles with trend indicators
+  - Detailed metric modals with data breakdowns
+  - Performance insights and trend analysis
+  - Status-based color coding (good/warning/danger)
+
+- **Filter System Integration**: Complete filter system with URL persistence
+  - URL-based filter state persistence
+  - Filter chips for active filter display
+  - Advanced filter combinations
+  - Clear individual or all filters functionality
+  - Performance monitoring and optimization
+
+- **Performance Monitoring**: Real-time performance tracking
+  - Search performance tracking with query analysis
+  - Task action performance monitoring
+  - Filter operation performance tracking
+  - Threshold-based performance warnings
+  - In-memory metrics storage and analysis
+
 ### **Week 1: Task Card Enhancements** ✅
 - **DueDatePicker Component**: New modal component for setting task due dates
   - Quick selection options (Today, Tomorrow, Next Week)
