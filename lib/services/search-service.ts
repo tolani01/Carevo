@@ -5,6 +5,7 @@ interface SearchResult {
   description: string
   metadata: Record<string, any>
   relevanceScore: number
+  url: string
 }
 
 interface SearchQuery {
@@ -19,13 +20,57 @@ class SearchService {
   private messages: any[] = []
   private users: any[] = []
 
-  // Natural language query processing
-  parseQuery(query: string): {
+  // Generate URL for search result
+  private generateResultUrl(result: { id: string; type: string }): string {
+    switch (result.type) {
+      case 'task': return `/task/${result.id}`;
+      case 'message': return `/message/${result.id}`;
+      case 'user': return `/user/${result.id}`;
+      default: return '#';
+    }
+  }
+
+  // Natural language query processing with AI enhancement
+  async parseQuery(query: string): Promise<{
     keywords: string[]
     intent: 'search' | 'filter' | 'action'
     entities: string[]
     timeRange?: { start: Date; end: Date }
-  } {
+    aiAnalysis?: any
+    searchContext?: 'clinical' | 'patient' | 'general'
+  }> {
+    // Try AI-powered analysis first
+    try {
+      const response = await fetch('/api/ai/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          context: {
+            userRole: 'healthcare-provider',
+            domain: 'healthcare-tasks',
+            enableFullSearch: true // Remove any character limitations
+          }
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        const aiAnalysis = data.data
+        
+        // Convert AI analysis to our format
+        const keywords = aiAnalysis.keywords || query.toLowerCase().split(/\s+/)
+        const intent = aiAnalysis.intent || 'search'
+        const entities = this.extractEntitiesFromAI(aiAnalysis)
+        const searchContext = this.detectSearchContext(query, aiAnalysis)
+        
+        return { keywords, intent, entities, aiAnalysis, searchContext }
+      }
+    } catch (error) {
+      console.error('AI analysis failed, using fallback:', error)
+    }
+    
+    // Fallback to rule-based analysis
     const keywords = query.toLowerCase().split(/\s+/)
     
     // Detect intent
@@ -60,7 +105,45 @@ class SearchService {
       timeRange = { start: startOfWeek, end: endOfWeek }
     }
 
-    return { keywords, intent, entities, timeRange }
+    const searchContext = this.detectSearchContext(query)
+
+    return { keywords, intent, entities, timeRange, searchContext }
+  }
+
+  private detectSearchContext(query: string, aiAnalysis?: any): 'clinical' | 'patient' | 'general' {
+    const lowerQuery = query.toLowerCase()
+    
+    // Clinical process indicators
+    const clinicalKeywords = [
+      'lab', 'test', 'result', 'prescription', 'medication', 'treatment', 'diagnosis',
+      'procedure', 'appointment', 'follow-up', 'refill', 'pa', 'prior authorization',
+      'billing', 'insurance', 'referral', 'consultation'
+    ]
+    
+    // Patient-specific indicators
+    const patientKeywords = [
+      'patient', 'mr', 'mrs', 'ms', 'dr', 'doctor', 'name', 'dob', 'birth',
+      'contact', 'phone', 'address', 'chart', 'medical record'
+    ]
+    
+    if (clinicalKeywords.some(keyword => lowerQuery.includes(keyword))) {
+      return 'clinical'
+    }
+    
+    if (patientKeywords.some(keyword => lowerQuery.includes(keyword))) {
+      return 'patient'
+    }
+    
+    return 'general'
+  }
+
+  private extractEntitiesFromAI(aiAnalysis: any): string[] {
+    const entities: string[] = []
+    // Extract entities from AI analysis
+    if (aiAnalysis.entities) {
+      entities.push(...aiAnalysis.entities)
+    }
+    return entities
   }
 
   // Semantic search implementation
@@ -69,7 +152,7 @@ class SearchService {
     suggestions: string[]
     queryAnalysis: string
   }> {
-    const analysis = this.parseQuery(query.query)
+    const analysis = await this.parseQuery(query.query)
     
     // Mock semantic search - in real implementation, this would use AI
     const results = await this.performSearch(query, analysis)
@@ -111,66 +194,246 @@ class SearchService {
   }
 
   private searchTasks(query: string, analysis: any): SearchResult[] {
-    // Mock task search - implement with real data
-    return [
+    const lowerQuery = query.toLowerCase()
+    const results: SearchResult[] = []
+    
+    // Dynamic task search based on query
+    const allTasks = [
       {
         id: 'task-1',
-        type: 'task',
+        type: 'task' as const,
         title: 'Follow up with patient about lab results',
         description: 'Patient called asking about test results from last week',
         metadata: { status: 'in-progress', priority: 'high', assignee: 'Dr. Smith' },
-        relevanceScore: 0.95
+        keywords: ['follow', 'patient', 'lab', 'results', 'test']
+      },
+      {
+        id: 'task-2',
+        type: 'task' as const,
+        title: 'Prescription refill for diabetes medication',
+        description: 'Patient needs Metformin refill - prior authorization required',
+        metadata: { status: 'waiting', priority: 'medium', assignee: 'Dr. Johnson' },
+        keywords: ['prescription', 'refill', 'diabetes', 'medication', 'metformin']
+      },
+      {
+        id: 'task-3',
+        type: 'task' as const,
+        title: 'Schedule MRI appointment for patient',
+        description: 'Patient needs MRI for knee injury - insurance pre-auth needed',
+        metadata: { status: 'todo', priority: 'high', assignee: 'Dr. Williams' },
+        keywords: ['mri', 'appointment', 'knee', 'injury', 'insurance']
+      },
+      {
+        id: 'task-4',
+        type: 'task' as const,
+        title: 'Review blood pressure medication',
+        description: 'Patient on Lisinopril - check for side effects and effectiveness',
+        metadata: { status: 'in-progress', priority: 'medium', assignee: 'Dr. Brown' },
+        keywords: ['blood', 'pressure', 'medication', 'lisinopril', 'review']
+      },
+      {
+        id: 'task-5',
+        type: 'task' as const,
+        title: 'Patient discharge planning',
+        description: 'Prepare discharge instructions and follow-up appointments',
+        metadata: { status: 'todo', priority: 'high', assignee: 'Dr. Davis' },
+        keywords: ['discharge', 'planning', 'instructions', 'follow-up']
       }
     ]
+    
+    // Calculate relevance based on keyword matching
+    allTasks.forEach(task => {
+      const keywordMatches = task.keywords.filter(keyword => 
+        lowerQuery.includes(keyword)
+      ).length
+      
+      const titleMatch = task.title.toLowerCase().includes(lowerQuery) ? 2 : 0
+      const descriptionMatch = task.description.toLowerCase().includes(lowerQuery) ? 1 : 0
+      
+      // More lenient scoring for shorter queries
+      const baseScore = (keywordMatches + titleMatch + descriptionMatch) / 5
+      const relevanceScore = Math.min(0.95, baseScore + (lowerQuery.length <= 2 ? 0.1 : 0))
+      
+      if (relevanceScore > 0.05) { // Lowered threshold to allow shorter queries
+        results.push({
+          ...task,
+          relevanceScore,
+          url: this.generateResultUrl(task)
+        })
+      }
+    })
+    
+    return results
   }
 
   private searchMessages(query: string, analysis: any): SearchResult[] {
-    // Mock message search
-    return [
+    const lowerQuery = query.toLowerCase()
+    const results: SearchResult[] = []
+    
+    const allMessages = [
       {
         id: 'msg-1',
-        type: 'message',
+        type: 'message' as const,
         title: 'Lab results discussion',
         description: 'Team discussion about patient lab results',
         metadata: { channel: 'general', author: 'Dr. Johnson', timestamp: '2024-12-19' },
-        relevanceScore: 0.85
+        keywords: ['lab', 'results', 'discussion', 'team', 'patient']
+      },
+      {
+        id: 'msg-2',
+        type: 'message' as const,
+        title: 'Prescription authorization needed',
+        description: 'Insurance denied prior auth for expensive medication',
+        metadata: { channel: 'clinical', author: 'Dr. Smith', timestamp: '2024-12-18' },
+        keywords: ['prescription', 'authorization', 'insurance', 'medication', 'denied']
+      },
+      {
+        id: 'msg-3',
+        type: 'message' as const,
+        title: 'Patient follow-up reminder',
+        description: 'Reminder to call patient about test results',
+        metadata: { channel: 'reminders', author: 'Nurse Mike', timestamp: '2024-12-17' },
+        keywords: ['patient', 'follow-up', 'reminder', 'call', 'test', 'results']
+      },
+      {
+        id: 'msg-4',
+        type: 'message' as const,
+        title: 'MRI scheduling update',
+        description: 'Patient MRI scheduled for next Tuesday at 2 PM',
+        metadata: { channel: 'scheduling', author: 'Dr. Williams', timestamp: '2024-12-16' },
+        keywords: ['mri', 'scheduling', 'patient', 'tuesday', 'appointment']
       }
     ]
+    
+    allMessages.forEach(message => {
+      const keywordMatches = message.keywords.filter(keyword => 
+        lowerQuery.includes(keyword)
+      ).length
+      
+      const titleMatch = message.title.toLowerCase().includes(lowerQuery) ? 2 : 0
+      const descriptionMatch = message.description.toLowerCase().includes(lowerQuery) ? 1 : 0
+      
+      // More lenient scoring for shorter queries
+      const baseScore = (keywordMatches + titleMatch + descriptionMatch) / 5
+      const relevanceScore = Math.min(0.95, baseScore + (lowerQuery.length <= 2 ? 0.1 : 0))
+      
+      if (relevanceScore > 0.05) { // Lowered threshold to allow shorter queries
+        results.push({
+          ...message,
+          relevanceScore,
+          url: this.generateResultUrl(message)
+        })
+      }
+    })
+    
+    return results
   }
 
   private searchUsers(query: string, analysis: any): SearchResult[] {
-    // Mock user search
-    return [
+    const lowerQuery = query.toLowerCase()
+    const results: SearchResult[] = []
+    
+    const allUsers = [
       {
         id: 'user-1',
-        type: 'user',
+        type: 'user' as const,
         title: 'Dr. Sarah Smith',
         description: 'Primary Care Physician',
         metadata: { role: 'provider', department: 'internal-medicine' },
-        relevanceScore: 0.90
+        keywords: ['sarah', 'smith', 'primary', 'care', 'physician', 'dr']
+      },
+      {
+        id: 'user-2',
+        type: 'user' as const,
+        title: 'Dr. Michael Johnson',
+        description: 'Cardiologist',
+        metadata: { role: 'provider', department: 'cardiology' },
+        keywords: ['michael', 'johnson', 'cardiologist', 'heart', 'dr']
+      },
+      {
+        id: 'user-3',
+        type: 'user' as const,
+        title: 'Nurse Jennifer Brown',
+        description: 'Registered Nurse',
+        metadata: { role: 'nurse', department: 'emergency' },
+        keywords: ['jennifer', 'brown', 'nurse', 'registered', 'emergency']
+      },
+      {
+        id: 'user-4',
+        type: 'user' as const,
+        title: 'Dr. Emily Davis',
+        description: 'Pediatrician',
+        metadata: { role: 'provider', department: 'pediatrics' },
+        keywords: ['emily', 'davis', 'pediatrician', 'children', 'dr']
       }
     ]
+    
+    allUsers.forEach(user => {
+      const keywordMatches = user.keywords.filter(keyword => 
+        lowerQuery.includes(keyword)
+      ).length
+      
+      const titleMatch = user.title.toLowerCase().includes(lowerQuery) ? 2 : 0
+      const descriptionMatch = user.description.toLowerCase().includes(lowerQuery) ? 1 : 0
+      
+      // More lenient scoring for shorter queries
+      const baseScore = (keywordMatches + titleMatch + descriptionMatch) / 5
+      const relevanceScore = Math.min(0.95, baseScore + (lowerQuery.length <= 2 ? 0.1 : 0))
+      
+      if (relevanceScore > 0.05) { // Lowered threshold to allow shorter queries
+        results.push({
+          ...user,
+          relevanceScore,
+          url: this.generateResultUrl(user)
+        })
+      }
+    })
+    
+    return results
   }
 
   private generateSuggestions(query: string, analysis: any): string[] {
     const suggestions: string[] = []
+    const lowerQuery = query.toLowerCase()
     
-    if (analysis.keywords.includes('urgent')) {
-      suggestions.push('Show me all urgent tasks')
-      suggestions.push('Find overdue high priority tasks')
+    // Clinical process suggestions
+    if (lowerQuery.includes('lab') || lowerQuery.includes('test') || lowerQuery.includes('result')) {
+      suggestions.push('Lab results pending review', 'Test results follow-up', 'Lab authorization needed')
     }
     
-    if (analysis.keywords.includes('patient')) {
-      suggestions.push('Tasks related to patient care')
-      suggestions.push('Patient follow-up tasks')
+    if (lowerQuery.includes('prescription') || lowerQuery.includes('medication') || lowerQuery.includes('refill')) {
+      suggestions.push('Prescription refills', 'Medication authorization', 'Drug interaction check')
     }
     
-    if (analysis.keywords.includes('lab')) {
-      suggestions.push('Lab result tasks')
-      suggestions.push('Pending lab results')
+    if (lowerQuery.includes('appointment') || lowerQuery.includes('schedule') || lowerQuery.includes('mri')) {
+      suggestions.push('Upcoming appointments', 'Schedule MRI', 'Appointment reminders')
+    }
+    
+    // Patient-related suggestions
+    if (lowerQuery.includes('patient') || lowerQuery.includes('follow') || lowerQuery.includes('call')) {
+      suggestions.push('Patient follow-up calls', 'Patient care tasks', 'Patient discharge planning')
+    }
+    
+    // Priority-based suggestions
+    if (lowerQuery.includes('urgent') || lowerQuery.includes('high') || lowerQuery.includes('emergency')) {
+      suggestions.push('Urgent tasks', 'High priority items', 'Emergency cases')
+    }
+    
+    if (lowerQuery.includes('overdue') || lowerQuery.includes('late') || lowerQuery.includes('past')) {
+      suggestions.push('Overdue tasks', 'Past due items', 'Late follow-ups')
+    }
+    
+    // Staff-related suggestions
+    if (lowerQuery.includes('dr') || lowerQuery.includes('doctor') || lowerQuery.includes('nurse')) {
+      suggestions.push('Doctor assignments', 'Nurse tasks', 'Staff schedules')
+    }
+    
+    // Default suggestions if no specific matches
+    if (suggestions.length === 0) {
+      suggestions.push('Recent tasks', 'Today\'s appointments', 'Pending authorizations', 'Patient care items')
     }
 
-    return suggestions.slice(0, 5)
+    return suggestions.slice(0, 4)
   }
 
   private createQueryAnalysis(analysis: any): string {

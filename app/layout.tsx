@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import '../lib/design-tokens.css';
 import { AppProvider } from '@/components/AppProvider';
+import { I18nProvider } from '@/components/I18nProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -35,16 +36,18 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <AppProvider>
-          {/* Landmark regions */}
-          <div role="application" className="min-h-screen flex flex-col">
-            {/* GlobalHeader and nav are rendered inside AppProvider */}
-            <main id="main" role="main" className="flex-1 flex flex-col">
-              {children}
-            </main>
-            <footer role="contentinfo" className="sr-only" aria-hidden="true" />
-          </div>
-        </AppProvider>
+        <I18nProvider>
+          <AppProvider>
+            {/* Landmark regions */}
+            <div role="application" className="min-h-screen flex flex-col">
+              {/* GlobalHeader and nav are rendered inside AppProvider */}
+              <main id="main" role="main" className="flex-1 flex flex-col">
+                {children}
+              </main>
+              <footer role="contentinfo" className="sr-only" aria-hidden="true" />
+            </div>
+          </AppProvider>
+        </I18nProvider>
       </body>
     </html>
   );

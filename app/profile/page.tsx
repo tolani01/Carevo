@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useApp } from '@/components/AppProvider'
+import { useI18n } from '@/lib/hooks/use-translation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +13,7 @@ import { NotificationCenter } from '@/components/NotificationCenter'
 import { PasswordChangeModal } from '@/components/PasswordChangeModal'
 import { OAuthProviderCard } from '@/components/OAuthProviderCard'
 import { SecurityDashboard } from '@/components/SecurityDashboard'
+// import { ProductivityDashboard } from '@/components/ProductivityDashboard'
 import { 
   User, 
   Phone, 
@@ -26,10 +29,18 @@ import {
 } from 'lucide-react'
 
 export default function ProfilePage() {
+  const router = useRouter()
   const { user, overdueCount, mentionCount } = useApp()
+  const { t, changeLanguage, getCurrentLanguage, formatDate } = useI18n()
   const [isEditing, setIsEditing] = useState(false)
+  
+  // Debug logging
+  console.log('ProfilePage - user:', user)
+  console.log('ProfilePage - overdueCount:', overdueCount)
+  console.log('ProfilePage - mentionCount:', mentionCount)
+  
   const [profileData, setProfileData] = useState({
-    name: user?.name || '',
+    name: user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email : '',
     phone: user?.phone || '',
     role: user?.role || 'User'
   })
@@ -38,6 +49,28 @@ export default function ProfilePage() {
   const [showNotificationCenter, setShowNotificationCenter] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showSecurityDashboard, setShowSecurityDashboard] = useState(false)
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  
+  // App preferences state
+  const [appPreferences, setAppPreferences] = useState({
+    darkMode: false,
+    language: 'en',
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+  })
+
+  // Load preferences on mount
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('appPreferences')
+    if (savedPreferences) {
+      const parsed = JSON.parse(savedPreferences)
+      setAppPreferences(parsed)
+      
+      // Apply dark mode if saved
+      if (parsed.darkMode) {
+        document.documentElement.classList.add('dark')
+      }
+    }
+  }, [])
 
   // Mock notification settings
   const notificationSettings = {
@@ -60,7 +93,7 @@ export default function ProfilePage() {
     emergencyOverride: true
   }
 
-  // Mock OAuth providers
+  // Mock OAuth providers - Security-focused approach
   const oauthProviders = [
     {
       id: 'google',
@@ -70,7 +103,8 @@ export default function ProfilePage() {
       description: 'Sign in with Google',
       connected: true,
       lastUsed: '2024-12-19T10:30:00Z',
-      permissions: ['Email', 'Profile', 'Calendar']
+      activePermissions: ['Email', 'Profile', 'Calendar'], // Only active permissions
+      availablePermissions: ['Email', 'Profile', 'Calendar'] // For display purposes
     },
     {
       id: 'microsoft',
@@ -79,7 +113,7 @@ export default function ProfilePage() {
       color: 'bg-blue-100',
       description: 'Sign in with Microsoft',
       connected: false,
-      permissions: ['Email', 'Profile', 'Office 365']
+      availablePermissions: ['Email', 'Profile', 'Office 365'] // Only available permissions
     },
     {
       id: 'apple',
@@ -88,7 +122,7 @@ export default function ProfilePage() {
       color: 'bg-gray-100',
       description: 'Sign in with Apple',
       connected: false,
-      permissions: ['Email', 'Profile']
+      availablePermissions: ['Email', 'Profile'] // Only available permissions
     }
   ]
 
@@ -155,10 +189,10 @@ export default function ProfilePage() {
     return new Promise(resolve => setTimeout(resolve, 1000))
   }
 
-  const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
+  const handlePasswordChange = async (currentPassword: string, newPassword: string): Promise<void> => {
     console.log('Changing password...')
     // TODO: Implement API call
-    return new Promise(resolve => setTimeout(resolve, 2000))
+    return new Promise<void>(resolve => setTimeout(resolve, 2000))
   }
 
   const handleOAuthConnect = async (providerId: string) => {
@@ -183,6 +217,60 @@ export default function ProfilePage() {
     // TODO: Implement export
   }
 
+  const handleViewHistory = () => {
+    router.push('/history')
+  }
+
+  // App preferences handlers
+  const handleDarkModeToggle = () => {
+    const newDarkMode = !appPreferences.darkMode
+    setAppPreferences(prev => ({ ...prev, darkMode: newDarkMode }))
+    
+    // Apply dark mode to document
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('darkMode', 'true')
+    } else {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('darkMode', 'false')
+    }
+  }
+
+  const handleLanguageChange = (newLanguage: string) => {
+    setAppPreferences(prev => ({ ...prev, language: newLanguage }))
+    changeLanguage(newLanguage)
+    console.log('Language changed to:', newLanguage)
+  }
+
+  const handleTimeZoneChange = (newTimeZone: string) => {
+    setAppPreferences(prev => ({ ...prev, timeZone: newTimeZone }))
+    localStorage.setItem('timeZone', newTimeZone)
+    console.log('Time zone changed to:', newTimeZone)
+  }
+
+  const handleSavePreferences = () => {
+    // Save all preferences to localStorage
+    localStorage.setItem('appPreferences', JSON.stringify(appPreferences))
+    console.log('Preferences saved:', appPreferences)
+    setShowSettingsModal(false)
+  }
+
+  // Show loading state if user is not available
+  if (!user) {
+    return (
+      <div className="flex-1 flex flex-col profile-page">
+        <div className="bg-white border-b border-gray-200 p-6">
+          <div className="flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold text-gray-900">Loading Profile...</h1>
+              <p className="text-gray-600">Please wait while we load your profile information.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col profile-page">
       {/* Profile Header */}
@@ -191,12 +279,14 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-gray-300 rounded-full flex items-center justify-center">
               <span className="text-2xl font-bold text-gray-600">
-                {user?.name?.charAt(0).toUpperCase() || 'U'}
+                {user ? (user.first_name?.charAt(0) || user.email?.charAt(0) || 'U').toUpperCase() : 'U'}
               </span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{user?.name || 'User'}</h1>
-              <p className="text-gray-600">{user?.role || 'User'} • {user?.department || 'Department'}</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.email : 'User'}
+              </h1>
+              <p className="text-gray-600">{user?.role || 'User'} • {user?.organization_id || 'Organization'}</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -206,7 +296,7 @@ export default function ProfilePage() {
               data-testid="open-security-dashboard"
             >
               <Shield className="h-4 w-4 mr-2" />
-              Security
+              {t('profile.security')}
             </Button>
             <Button
               variant="outline"
@@ -237,7 +327,7 @@ export default function ProfilePage() {
                   data-testid="open-notification-center"
                 >
                   <Bell className="h-6 w-6" />
-                  Notifications
+                  {t('profile.notifications')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -246,7 +336,7 @@ export default function ProfilePage() {
                   data-testid="open-password-modal"
                 >
                   <Lock className="h-6 w-6" />
-                  Password
+                  {t('profile.password')}
                 </Button>
                 <Button 
                   variant="outline" 
@@ -255,14 +345,16 @@ export default function ProfilePage() {
                   data-testid="open-security-dashboard"
                 >
                   <Shield className="h-6 w-6" />
-                  Security
+                  {t('profile.security')}
                 </Button>
                 <Button 
                   variant="outline" 
+                  onClick={() => setShowSettingsModal(true)}
                   className="h-20 flex-col gap-2"
+                  data-testid="open-settings-modal"
                 >
                   <Settings className="h-6 w-6" />
-                  Settings
+                  {t('profile.settings')}
                 </Button>
               </div>
             </CardContent>
@@ -436,6 +528,12 @@ export default function ProfilePage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Productivity Dashboard */}
+          {/* <ProductivityDashboard 
+            userId={user?.id}
+            onViewHistory={handleViewHistory}
+          /> */}
         </div>
       </main>
 
@@ -471,6 +569,205 @@ export default function ProfilePage() {
                 onRefresh={handleSecurityRefresh}
                 onExport={handleSecurityExport}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold">{t('profile.accountSettings')}</h2>
+                <Button 
+                  variant="ghost" 
+                  onClick={() => setShowSettingsModal(false)}
+                >
+                  ✕
+                </Button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* General Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Settings className="h-5 w-5" />
+                      {t('profile.generalSettings')}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="displayName">{t('profile.displayName')}</Label>
+                        <Input
+                          id="displayName"
+                          value={profileData.name}
+                          onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="phoneNumber">{t('profile.phone')}</Label>
+                        <Input
+                          id="phoneNumber"
+                          value={profileData.phone}
+                          onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Role</Label>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant="outline" className="text-sm">
+                          {profileData.role}
+                        </Badge>
+                        <span className="text-sm text-gray-500">
+                          Contact your administrator to change your role
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Quick Settings Actions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Quick Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowSettingsModal(false);
+                          setShowNotificationCenter(true);
+                        }}
+                        className="h-16 flex-col gap-2"
+                      >
+                        <Bell className="h-6 w-6" />
+                        Notification Preferences
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowSettingsModal(false);
+                          setShowPasswordModal(true);
+                        }}
+                        className="h-16 flex-col gap-2"
+                      >
+                        <Lock className="h-6 w-6" />
+                        Change Password
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowSettingsModal(false);
+                          setShowSecurityDashboard(true);
+                        }}
+                        className="h-16 flex-col gap-2"
+                      >
+                        <Shield className="h-6 w-6" />
+                        Security Settings
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowSettingsModal(false);
+                          handleViewHistory();
+                        }}
+                        className="h-16 flex-col gap-2"
+                      >
+                        <Clock className="h-6 w-6" />
+                        View History
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* App Preferences */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t('profile.appPreferences')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{t('profile.darkMode')}</div>
+                        <div className="text-sm text-gray-500">{t('profile.darkModeDescription')}</div>
+                      </div>
+                      <Button 
+                        variant={appPreferences.darkMode ? "default" : "outline"} 
+                        size="sm"
+                        onClick={handleDarkModeToggle}
+                        className="flex items-center gap-2"
+                      >
+                        {appPreferences.darkMode ? (
+                          <>
+                            <span className="text-lg">🌙</span>
+                            {t('profile.dark')}
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-lg">☀️</span>
+                            {t('profile.light')}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{t('profile.language')}</div>
+                        <div className="text-sm text-gray-500">{t('profile.languageDescription')}</div>
+                      </div>
+                      <select 
+                        value={getCurrentLanguage()}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
+                        className="px-3 py-1 border rounded-md text-sm"
+                      >
+                        <option value="en">English</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                        <option value="de">Deutsch</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">{t('profile.timeZone')}</div>
+                        <div className="text-sm text-gray-500">{t('profile.timeZoneDescription')}</div>
+                      </div>
+                      <select 
+                        value={appPreferences.timeZone}
+                        onChange={(e) => handleTimeZoneChange(e.target.value)}
+                        className="px-3 py-1 border rounded-md text-sm"
+                      >
+                        <option value="America/New_York">Eastern Time</option>
+                        <option value="America/Chicago">Central Time</option>
+                        <option value="America/Denver">Mountain Time</option>
+                        <option value="America/Los_Angeles">Pacific Time</option>
+                        <option value="Europe/London">London</option>
+                        <option value="Europe/Paris">Paris</option>
+                        <option value="Asia/Tokyo">Tokyo</option>
+                        <option value="UTC">UTC</option>
+                      </select>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowSettingsModal(false)}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                  <Button onClick={handleSavePreferences}>
+                    {t('profile.saveChanges')}
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

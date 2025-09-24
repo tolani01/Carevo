@@ -21,7 +21,8 @@ interface OAuthProvider {
   description: string
   connected: boolean
   lastUsed?: string
-  permissions: string[]
+  activePermissions?: string[] // Only for connected accounts
+  availablePermissions: string[] // For display purposes
 }
 
 interface OAuthProviderCardProps {
@@ -115,12 +116,22 @@ export function OAuthProviderCard({
           </div>
         )}
 
-        {/* Permissions */}
+        {/* Permissions - Security-focused display */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium text-gray-900">Permissions:</h4>
+          <h4 className="text-sm font-medium text-gray-900">
+            {provider.connected ? 'Active Permissions:' : 'Available Permissions:'}
+          </h4>
           <div className="flex flex-wrap gap-1">
-            {provider.permissions.map((permission, index) => (
-              <Badge key={index} variant="outline" className="text-xs">
+            {(provider.connected ? provider.activePermissions : provider.availablePermissions)?.map((permission, index) => (
+              <Badge 
+                key={index} 
+                variant={provider.connected ? "default" : "outline"} 
+                className={`text-xs ${
+                  provider.connected 
+                    ? 'bg-green-100 text-green-800 border-green-200' 
+                    : 'border-gray-300 text-gray-600'
+                }`}
+              >
                 {permission}
               </Badge>
             ))}

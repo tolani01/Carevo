@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { RealTimeProvider, useRealTime } from '@/lib/providers/RealTimeProvider'
-import { WhatsAppChatLayout } from '@/components/WhatsAppChatLayout'
+import { CarevoChatLayout } from '@/components/CarevoChatLayout'
 import { MobileChatLayout } from '@/components/MobileChatLayout'
 
 // Mock channels data
@@ -46,7 +46,8 @@ const mockChannels = [
 ]
 
 function ChatContent() {
-  const [selectedChannel, setSelectedChannel] = useState<any>(null)
+  const [selectedChannel, setSelectedChannel] = useState<any>(null) // Start with no channel to show welcome screen
+  const [channels, setChannels] = useState(mockChannels)
   const [isMobile, setIsMobile] = useState(false)
   const { messages, sendMessage, sendFile } = useRealTime()
 
@@ -82,6 +83,12 @@ function ChatContent() {
     // TODO: Open profile modal
   }
 
+  const handleCreateChannel = (newChannel: any) => {
+    setChannels(prev => [...prev, newChannel])
+    setSelectedChannel(newChannel)
+    console.log('Created new channel:', newChannel)
+  }
+
   if (isMobile) {
     return selectedChannel ? (
       <MobileChatLayout
@@ -102,12 +109,16 @@ function ChatContent() {
   }
 
   return (
-    <WhatsAppChatLayout
-      channels={mockChannels}
+    <CarevoChatLayout
+      channels={channels}
       selectedChannel={selectedChannel}
       onChannelSelect={setSelectedChannel}
       onSearch={handleSearch}
       onProfileClick={handleProfileClick}
+      messages={messages}
+      onSendMessage={handleSendMessage}
+      onSendFile={handleSendFile}
+      onCreateChannel={handleCreateChannel}
     />
   )
 }

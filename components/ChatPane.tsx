@@ -5,7 +5,12 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { MessageBubble } from './MessageBubble'
 import { FileUpload } from './FileUpload'
-import { Paperclip, Send, Smile } from 'lucide-react'
+import { EmojiPicker } from './EmojiPicker'
+import { ChatMenu } from './ChatMenu'
+import { CallInterface } from './CallInterface'
+import { NotificationContainer } from './NotificationToast'
+import { useNotifications } from '../lib/hooks/use-notifications'
+import { Paperclip, Send, Smile, MoreVertical } from 'lucide-react'
 
 interface ChatPaneProps {
   channel: any
@@ -18,12 +23,43 @@ export function ChatPane({ channel, messages, onSendMessage, onSendFile }: ChatP
   const [message, setMessage] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const [showFileUpload, setShowFileUpload] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showCall, setShowCall] = useState(false)
+  const [callType, setCallType] = useState<'voice' | 'video'>('voice')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const { notifications, removeNotification, showSuccess, showInfo } = useNotifications()
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Close menu when clicking outside (but not on menu items or modals)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      
+      // Don't close if clicking on menu items, modals, or their content
+      const isMenuClick = menuRef.current?.contains(target)
+      const isModalClick = document.querySelector('[role="dialog"]')?.contains(target)
+      const isMenuButtonClick = (target as Element)?.closest('[data-menu-item]')
+      const isModalOpen = document.querySelector('[role="dialog"]') !== null
+      
+      // Only close if no modals are open and click is truly outside
+      if (!isMenuClick && !isModalClick && !isMenuButtonClick && !isModalOpen) {
+        setShowMenu(false)
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
 
   const handleSend = () => {
     if (message.trim()) {
@@ -44,17 +80,177 @@ export function ChatPane({ channel, messages, onSendMessage, onSendFile }: ChatP
     setShowFileUpload(false)
   }
 
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage(prev => prev + emoji)
+    setShowEmoji(false)
+  }
+
+  const handleStartCall = (channelId: string, type: 'voice' | 'video') => {
+    setCallType(type)
+    setShowCall(true)
+    setShowMenu(false)
+  }
+
+  const handleScheduleMeeting = (channelId: string, meetingData: any) => {
+    console.log('Scheduling meeting:', meetingData)
+    
+    // Create tasks for all participants
+    const meetingTasks = meetingData.participants.map((participant: any) => ({
+      id: `task-${Date.now()}-${participant.id}`,
+      title: `Attend: ${meetingData.title}`,
+      description: `Meeting scheduled for ${meetingData.startDate} at ${meetingData.startTime} (${meetingData.duration} minutes)\n\n${meetingData.description || 'No description provided'}`,
+      assignee: participant.id,
+      assigneeName: participant.name,
+      type: 'meeting',
+      priority: 'medium',
+      status: 'todo',
+      due_date: new Date(`${meetingData.startDate}T${meetingData.startTime}`).toISOString(),
+      created_at: new Date().toISOString(),
+      meeting_id: meetingData.id,
+      channel_id: channelId,
+      tags: ['meeting', 'scheduled']
+    }))
+
+    // Add organizer task
+    const organizerTask = {
+      id: `task-${Date.now()}-organizer`,
+      title: `Organize: ${meetingData.title}`,
+      description: `You are organizing this meeting scheduled for ${meetingData.startDate} at ${meetingData.startTime} (${meetingData.duration} minutes)\n\n${meetingData.description || 'No description provided'}`,
+      assignee: 'current-user',
+      assigneeName: 'Current User',
+      type: 'meeting',
+      priority: 'high',
+      status: 'todo',
+      due_date: new Date(`${meetingData.startDate}T${meetingData.startTime}`).toISOString(),
+      created_at: new Date().toISOString(),
+      meeting_id: meetingData.id,
+      channel_id: channelId,
+      tags: ['meeting', 'organizer', 'scheduled']
+    }
+
+    const allTasks = [...meetingTasks, organizerTask]
+    
+    console.log('Created tasks for meeting:', allTasks)
+    
+    // In a real implementation, this would:
+    // 1. Save meeting to database
+    // 2. Create tasks for all participants
+    // 3. Send notifications
+    // 4. Add to calendar
+    // 5. Update task board
+    
+    showSuccess(
+      'Meeting Scheduled Successfully',
+      `"${meetingData.title}" has been scheduled!\n\n✅ Tasks created for ${allTasks.length} people\n📅 Meeting: ${meetingData.startDate} at ${meetingData.startTime}\n⏱️ Duration: ${meetingData.duration} minutes\n👥 Participants: ${meetingData.participants.length + 1} people`,
+      0 // No auto-dismiss
+    )
+  }
+
+  const handleMuteToggle = (channelId: string, muted: boolean) => {
+    console.log('Channel muted:', channelId, muted)
+    // In a real implementation, this would:
+    // 1. Update user preferences
+    // 2. Disable/enable notifications for this channel
+    // 3. Update UI state
+    
+    if (muted) {
+      showSuccess(
+        'Channel Muted',
+        'You will not receive notifications from this channel.',
+        0 // No auto-dismiss
+      )
+    } else {
+      showInfo(
+        'Channel Unmuted',
+        'You will now receive notifications from this channel.',
+        0 // No auto-dismiss
+      )
+    }
+  }
+
+  const handlePinToggle = (channelId: string, pinned: boolean) => {
+    console.log('Channel pinned:', channelId, pinned)
+    // In a real implementation, this would:
+    // 1. Update channel pin status
+    // 2. Move channel to top of list
+    // 3. Update UI state
+    
+    if (pinned) {
+      showSuccess(
+        'Channel Pinned',
+        'This channel will appear at the top of your chat list.',
+        0 // No auto-dismiss
+      )
+    } else {
+      showInfo(
+        'Channel Unpinned',
+        'This channel will appear in its normal position.',
+        0 // No auto-dismiss
+      )
+    }
+  }
+
+  const handleArchive = (channelId: string) => {
+    console.log('Channel archived:', channelId)
+    // In a real implementation, this would:
+    // 1. Move channel to archived state
+    // 2. Hide from active chat list
+    // 3. Preserve message history
+    // 4. Update UI state
+    
+    // Show confirmation notification first
+    showInfo(
+      'Archive Channel?',
+      `Are you sure you want to archive "${channel.name}"? You can unarchive it later from Settings → Archived Chats.\n\nClick OK to confirm archiving.`,
+      0 // No auto-dismiss
+    )
+    
+    // Show success notification after user clicks OK (simulated with timeout)
+    // In a real app, this would be triggered by a confirmation callback
+    setTimeout(() => {
+      showSuccess(
+        'Channel Archived Successfully',
+        `"${channel.name}" has been moved to your archived chats.\n\nTo retrieve it:\n1. Go to Settings → Archived Chats\n2. Find this channel\n3. Click "Unarchive" to restore it\n\nAll message history is preserved.`,
+        0 // No auto-dismiss
+      )
+    }, 3000) // 3 second delay to allow user to click OK on first notification
+  }
+
   if (!channel) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
+      <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-50">
+        <div className="text-center max-w-md mx-auto px-6">
+          {/* Carevo Logo/Icon */}
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <span className="text-white font-bold text-2xl">C</span>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">WhatsApp Web</h3>
-          <p className="text-gray-600">Send and receive messages without keeping your phone online.</p>
+          
+          {/* Main Branding */}
+          <h1 className="text-3xl font-bold text-gray-900 mb-3">Carevo</h1>
+          <h2 className="text-xl font-semibold text-gray-700 mb-4">Healthcare Operations Excellence Platform</h2>
+          
+          {/* Key Phrases */}
+          <div className="space-y-3 mb-8">
+            <p className="text-lg text-gray-600 font-medium">"Less chaos, more patient care"</p>
+            <p className="text-base text-gray-500">Boost your collective productivity</p>
+            <p className="text-sm text-gray-400">Streamline operations • Enhance collaboration • Improve outcomes</p>
+          </div>
+          
+          {/* Call to Action */}
+          <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
+            <p className="text-sm text-gray-600 mb-2">Select a channel to start collaborating:</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">General</span>
+              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">Development</span>
+              <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">Design</span>
+              <span className="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium">Support</span>
+            </div>
+          </div>
+          
+          {/* Footer Message */}
+          <p className="text-xs text-gray-400 mt-6">
+            Powered by AiPPcC • Healthcare Operations Excellence
+          </p>
         </div>
       </div>
     )
@@ -77,21 +273,52 @@ export function ChatPane({ channel, messages, onSendMessage, onSendFile }: ChatP
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="p-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="p-2"
+            onClick={() => handleStartCall(channel.id, 'voice')}
+            title="Start Voice Call"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
             </svg>
           </Button>
-          <Button variant="ghost" size="sm" className="p-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="p-2"
+            onClick={() => handleStartCall(channel.id, 'video')}
+            title="Start Video Call"
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
             </svg>
           </Button>
-          <Button variant="ghost" size="sm" className="p-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-            </svg>
-          </Button>
+          <div className="relative" ref={menuRef}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="p-2"
+              onClick={() => setShowMenu(!showMenu)}
+              title="More Options"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </Button>
+            
+            {/* Three Dots Menu */}
+            {showMenu && (
+              <ChatMenu
+                channel={channel}
+                onClose={() => setShowMenu(false)}
+                onMuteToggle={handleMuteToggle}
+                onPinToggle={handlePinToggle}
+                onArchive={handleArchive}
+                onStartCall={handleStartCall}
+                onScheduleMeeting={handleScheduleMeeting}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -162,6 +389,13 @@ export function ChatPane({ channel, messages, onSendMessage, onSendFile }: ChatP
             >
               <Smile className="h-4 w-4" />
             </Button>
+            
+            {/* Emoji Picker */}
+            <EmojiPicker
+              isOpen={showEmoji}
+              onClose={() => setShowEmoji(false)}
+              onEmojiSelect={handleEmojiSelect}
+            />
           </div>
           
           <Button
@@ -175,6 +409,21 @@ export function ChatPane({ channel, messages, onSendMessage, onSendFile }: ChatP
           </Button>
         </div>
       </div>
+
+      {/* Call Interface */}
+      <CallInterface
+        isOpen={showCall}
+        onClose={() => setShowCall(false)}
+        channel={channel}
+        callType={callType}
+        onEndCall={() => setShowCall(false)}
+      />
+
+      {/* Notifications */}
+      <NotificationContainer
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
     </div>
   )
 }

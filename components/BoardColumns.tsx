@@ -194,16 +194,30 @@ export function BoardColumns({
                 
                 {columnTasks.length === 0 && (
                   <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-                    <div className="text-sm">No tasks in {column.title.toLowerCase()}</div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onTaskCreate?.(column.id)}
-                      className="mt-2"
-                    >
-                      <Plus className="mr-1 h-4 w-4" />
-                      Add task
-                    </Button>
+                    {column.id === 'Done' ? (
+                      <div className="text-center">
+                        <div className="text-2xl mb-2">🚩</div>
+                        <div className="text-sm font-medium text-gray-700 mb-1">
+                          Waiting to plant your first flag
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          Complete a task today to see it here!
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-sm">No tasks in {column.title.toLowerCase()}</div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onTaskCreate?.(column.id)}
+                          className="mt-2"
+                        >
+                          <Plus className="mr-1 h-4 w-4" />
+                          Add task
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </CardContent>

@@ -5,7 +5,7 @@ import { ChannelList } from './ChannelList'
 import { ChatPane } from './ChatPane'
 import { SearchBar } from './SearchBar'
 
-interface WhatsAppChatLayoutProps {
+interface CarevoChatLayoutProps {
   channels: any[]
   selectedChannel: any
   onChannelSelect: (channel: any) => void
@@ -13,13 +13,13 @@ interface WhatsAppChatLayoutProps {
   onProfileClick: () => void
 }
 
-export function WhatsAppChatLayout({
+export function CarevoChatLayout({
   channels,
   selectedChannel,
   onChannelSelect,
   onSearch,
   onProfileClick
-}: WhatsAppChatLayoutProps) {
+}: CarevoChatLayoutProps) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const handleSearch = (query: string) => {

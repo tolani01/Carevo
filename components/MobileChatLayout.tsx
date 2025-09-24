@@ -1,10 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { MessageBubble } from './MessageBubble'
 import { FileUpload } from './FileUpload'
+import { EmojiPicker } from './EmojiPicker'
+import { ChatMenu } from './ChatMenu'
+import { CallInterface } from './CallInterface'
+import { NotificationContainer } from './NotificationToast'
+import { useNotifications } from '../lib/hooks/use-notifications'
 import { 
   ArrowLeft, 
   MoreVertical, 
@@ -34,6 +39,37 @@ export function MobileChatLayout({
   const [message, setMessage] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const [showAttach, setShowAttach] = useState(false)
+  const [showMenu, setShowMenu] = useState(false)
+  const [showCall, setShowCall] = useState(false)
+  const [callType, setCallType] = useState<'voice' | 'video'>('voice')
+  const menuRef = useRef<HTMLDivElement>(null)
+  const { notifications, removeNotification, showSuccess, showInfo } = useNotifications()
+
+  // Close menu when clicking outside (but not on menu items or modals)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+      
+      // Don't close if clicking on menu items, modals, or their content
+      const isMenuClick = menuRef.current?.contains(target)
+      const isModalClick = document.querySelector('[role="dialog"]')?.contains(target)
+      const isMenuButtonClick = (target as Element)?.closest('[data-menu-item]')
+      const isModalOpen = document.querySelector('[role="dialog"]') !== null
+      
+      // Only close if no modals are open and click is truly outside
+      if (!isMenuClick && !isModalClick && !isMenuButtonClick && !isModalOpen) {
+        setShowMenu(false)
+      }
+    }
+
+    if (showMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showMenu])
 
   const handleSend = () => {
     if (message.trim()) {
@@ -52,6 +88,83 @@ export function MobileChatLayout({
   const handleFileSelect = (files: File[]) => {
     onSendFile(files)
     setShowAttach(false)
+  }
+
+  const handleEmojiSelect = (emoji: string) => {
+    setMessage(prev => prev + emoji)
+    setShowEmoji(false)
+  }
+
+  const handleStartCall = (channelId: string, type: 'voice' | 'video') => {
+    setCallType(type)
+    setShowCall(true)
+    setShowMenu(false)
+  }
+
+  const handleMuteToggle = (channelId: string, muted: boolean) => {
+    console.log('Channel muted:', channelId, muted)
+    
+    if (muted) {
+      showSuccess(
+        'Channel Muted',
+        'You will not receive notifications from this channel.',
+        0 // No auto-dismiss
+      )
+    } else {
+      showInfo(
+        'Channel Unmuted',
+        'You will now receive notifications from this channel.',
+        0 // No auto-dismiss
+      )
+    }
+  }
+
+  const handlePinToggle = (channelId: string, pinned: boolean) => {
+    console.log('Channel pinned:', channelId, pinned)
+    
+    if (pinned) {
+      showSuccess(
+        'Channel Pinned',
+        'This channel will appear at the top of your chat list.',
+        0 // No auto-dismiss
+      )
+    } else {
+      showInfo(
+        'Channel Unpinned',
+        'This channel will appear in its normal position.',
+        0 // No auto-dismiss
+      )
+    }
+  }
+
+  const handleArchive = (channelId: string) => {
+    console.log('Channel archived:', channelId)
+    
+    // Show confirmation notification first
+    showInfo(
+      'Archive Channel?',
+      `Are you sure you want to archive "${channel.name}"? You can unarchive it later from Settings → Archived Chats.\n\nClick OK to confirm archiving.`,
+      0 // No auto-dismiss
+    )
+    
+    // Show success notification after user clicks OK (simulated with timeout)
+    // In a real app, this would be triggered by a confirmation callback
+    setTimeout(() => {
+      showSuccess(
+        'Channel Archived Successfully',
+        `"${channel.name}" has been moved to your archived chats.\n\nTo retrieve it:\n1. Go to Settings → Archived Chats\n2. Find this channel\n3. Click "Unarchive" to restore it\n\nAll message history is preserved.`,
+        0 // No auto-dismiss
+      )
+    }, 3000) // 3 second delay to allow user to click OK on first notification
+  }
+
+  const handleScheduleMeeting = (channelId: string, meetingData: any) => {
+    console.log('Scheduling meeting:', meetingData)
+    showSuccess(
+      'Meeting Scheduled Successfully',
+      `"${meetingData.title}" has been scheduled!\n\nAll participants have been notified and tasks have been created.`,
+      0 // No auto-dismiss
+    )
   }
 
   return (
@@ -100,14 +213,30 @@ export function MobileChatLayout({
           >
             <Phone className="h-5 w-5" />
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="p-2 min-h-[44px] min-w-[44px]"
-            aria-label="More options"
-          >
-            <MoreVertical className="h-5 w-5" />
-          </Button>
+          <div className="relative" ref={menuRef}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="p-2 min-h-[44px] min-w-[44px]"
+              aria-label="More options"
+              onClick={() => setShowMenu(!showMenu)}
+            >
+              <MoreVertical className="h-5 w-5" />
+            </Button>
+            
+            {/* Three Dots Menu */}
+            {showMenu && (
+              <ChatMenu
+                channel={channel}
+                onClose={() => setShowMenu(false)}
+                onMuteToggle={handleMuteToggle}
+                onPinToggle={handlePinToggle}
+                onArchive={handleArchive}
+                onStartCall={handleStartCall}
+                onScheduleMeeting={handleScheduleMeeting}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -179,6 +308,13 @@ export function MobileChatLayout({
             >
               <Smile className="h-4 w-4" />
             </Button>
+            
+            {/* Emoji Picker */}
+            <EmojiPicker
+              isOpen={showEmoji}
+              onClose={() => setShowEmoji(false)}
+              onEmojiSelect={handleEmojiSelect}
+            />
           </div>
           
           <Button
@@ -192,6 +328,22 @@ export function MobileChatLayout({
           </Button>
         </div>
       </div>
+
+      {/* Call Interface */}
+      {showCall && (
+        <CallInterface
+          isOpen={showCall}
+          onClose={() => setShowCall(false)}
+          callType={callType}
+          channel={channel}
+        />
+      )}
+
+      {/* Notifications */}
+      <NotificationContainer
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
     </div>
   )
 }

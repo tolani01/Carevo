@@ -13,102 +13,181 @@ import {
   BarChart3
 } from 'lucide-react'
 
+interface Task {
+  id: string
+  title: string
+  status: string
+  priority: string
+  due_date: string
+  created_at: string
+  completed_at?: string
+  assignee: string
+}
+
 interface PersonalKPIsProps {
   userId: string
   timeRange: 'today' | 'week' | 'month'
   onTimeRangeChange: (range: 'today' | 'week' | 'month') => void
+  tasks?: Task[]
+  onKPIClick?: (metricId: string) => void
 }
 
-export function PersonalKPIs({ userId, timeRange, onTimeRangeChange }: PersonalKPIsProps) {
-  // Mock data - replace with real API calls
-  const kpiData = {
-    today: {
-      completed: 8,
-      overdue: 2,
-      dueToday: 5,
-      avgTime: '1.8h',
-      efficiency: 92,
-      streak: 5
-    },
-    week: {
-      completed: 47,
-      overdue: 3,
-      dueToday: 12,
-      avgTime: '2.1h',
-      efficiency: 88,
-      streak: 5
-    },
-    month: {
-      completed: 180,
-      overdue: 8,
-      dueToday: 45,
-      avgTime: '2.3h',
-      efficiency: 85,
-      streak: 5
+export function PersonalKPIs({ userId, timeRange, onTimeRangeChange, tasks = [], onKPIClick }: PersonalKPIsProps) {
+  // Calculate real data from tasks
+  const calculatePersonalKPIs = () => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekStart = new Date(today)
+    weekStart.setDate(today.getDate() - today.getDay())
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+
+    const getDateRange = () => {
+      switch (timeRange) {
+        case 'today':
+          return { start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000) }
+        case 'week':
+          return { start: weekStart, end: new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000) }
+        case 'month':
+          return { start: monthStart, end: new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1) }
+        default:
+          return { start: today, end: new Date(today.getTime() + 24 * 60 * 60 * 1000) }
+      }
+    }
+
+    const { start, end } = getDateRange()
+    
+    // Filter tasks for the current user and time range
+    const userTasks = tasks.filter(task => task.assignee === userId || task.assignee === 'me')
+    
+    // Calculate metrics
+    const completed = userTasks.filter(task => 
+      task.status === 'Done' && 
+      task.completed_at && 
+      new Date(task.completed_at) >= start && 
+      new Date(task.completed_at) < end
+    ).length
+
+    const overdue = userTasks.filter(task => 
+      task.status !== 'Done' && 
+      new Date(task.due_date) < today
+    ).length
+
+    const dueToday = userTasks.filter(task => 
+      task.status !== 'Done' && 
+      new Date(task.due_date).toDateString() === today.toDateString()
+    ).length
+
+    // Calculate average completion time (mock calculation)
+    const completedTasks = userTasks.filter(task => task.status === 'Done' && task.completed_at)
+    const avgTime = completedTasks.length > 0 ? 
+      (completedTasks.length * 1.5 + Math.random() * 1.0).toFixed(1) + 'h' : '0h'
+
+    // Calculate efficiency (completion rate)
+    const totalTasks = userTasks.filter(task => 
+      new Date(task.created_at) >= start && new Date(task.created_at) < end
+    ).length
+    const efficiency = totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0
+
+    // Calculate streak (mock calculation)
+    const streak = Math.min(completed, 7) // Simple streak based on completed tasks
+
+    return {
+      completed,
+      overdue,
+      dueToday,
+      avgTime,
+      efficiency,
+      streak
     }
   }
 
-  const data = kpiData[timeRange]
+  const data = calculatePersonalKPIs()
+
+  // Calculate trend changes (mock for now)
+  const getTrendChange = (metricId: string) => {
+    const trends = {
+      completed: timeRange === 'today' ? 12 : timeRange === 'week' ? 8 : 5,
+      overdue: timeRange === 'today' ? -2 : timeRange === 'week' ? -1 : 0,
+      'due-today': 0,
+      'avg-time': timeRange === 'today' ? -15 : timeRange === 'week' ? -8 : -5,
+      efficiency: timeRange === 'today' ? 5 : timeRange === 'week' ? 3 : 2,
+      streak: 1
+    }
+    return trends[metricId as keyof typeof trends] || 0
+  }
 
   const metrics = [
     {
       id: 'completed',
       label: 'Completed',
       value: data.completed,
-      icon: <CheckCircle className="h-4 w-4" />,
+      icon: <CheckCircle className="h-3 w-3" />,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      change: timeRange === 'today' ? 12 : timeRange === 'week' ? 8 : 5
+      change: getTrendChange('completed')
     },
     {
       id: 'overdue',
       label: 'Overdue',
       value: data.overdue,
-      icon: <Clock className="h-4 w-4" />,
+      icon: <Clock className="h-3 w-3" />,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
-      change: timeRange === 'today' ? -2 : timeRange === 'week' ? -1 : 0
+      change: getTrendChange('overdue')
     },
     {
       id: 'due-today',
       label: 'Due Today',
       value: data.dueToday,
-      icon: <Calendar className="h-4 w-4" />,
+      icon: <Calendar className="h-3 w-3" />,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
-      change: 0
+      change: getTrendChange('due-today')
     },
     {
       id: 'avg-time',
       label: 'Avg Time',
       value: data.avgTime,
-      icon: <Clock className="h-4 w-4" />,
+      icon: <Clock className="h-3 w-3" />,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50',
-      change: timeRange === 'today' ? -15 : timeRange === 'week' ? -8 : -5
+      change: getTrendChange('avg-time')
     },
     {
       id: 'efficiency',
       label: 'Efficiency',
       value: `${data.efficiency}%`,
-      icon: <Zap className="h-4 w-4" />,
+      icon: <Zap className="h-3 w-3" />,
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
-      change: timeRange === 'today' ? 5 : timeRange === 'week' ? 3 : 2
+      change: getTrendChange('efficiency')
     },
     {
       id: 'streak',
       label: 'Streak',
       value: `${data.streak} days`,
-      icon: <Target className="h-4 w-4" />,
+      icon: <Target className="h-3 w-3" />,
       color: 'text-indigo-600',
       bgColor: 'bg-indigo-50',
-      change: 1
+      change: getTrendChange('streak')
     }
   ]
 
+  const getStatusColor = (metric: any) => {
+    if (metric.id === 'overdue' && metric.value > 0) return 'bg-red-50 border-red-200'
+    if (metric.id === 'due-today' && metric.value > 10) return 'bg-yellow-50 border-yellow-200'
+    if (metric.id === 'efficiency' && metric.value < 80) return 'bg-yellow-50 border-yellow-200'
+    return 'bg-green-50 border-green-200'
+  }
+
+  const getTrendIcon = (change: number) => {
+    if (change > 0) return '↗️'
+    if (change < 0) return '↘️'
+    return '→'
+  }
+
   return (
-    <div className="space-y-4" data-testid="personal-kpis">
+    <div className="space-y-3" data-testid="personal-kpis">
       {/* Time Range Selector */}
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Your Performance</h2>
@@ -129,71 +208,43 @@ export function PersonalKPIs({ userId, timeRange, onTimeRangeChange }: PersonalK
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {/* Compact KPI Bar */}
+      <div className="flex items-center gap-4 overflow-x-auto">
         {metrics.map((metric) => (
-          <Card 
-            key={metric.id} 
-            className="hover:shadow-md transition-shadow"
+          <div
+            key={metric.id}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-md border cursor-pointer hover:shadow-sm transition-shadow min-w-fit ${getStatusColor(metric)}`}
             data-testid={`kpi-personal-${metric.id}`}
+            onClick={() => onKPIClick?.(metric.id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onKPIClick?.(metric.id)
+              }
+            }}
+            aria-label={`View details for ${metric.label}: ${metric.value}`}
           >
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <div className={`p-2 rounded-full ${metric.bgColor}`}>
-                  <div className={metric.color} aria-hidden="true">
-                    {metric.icon}
-                  </div>
-                </div>
+            <div className={`${metric.color} flex-shrink-0`}>
+              {metric.icon}
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs text-gray-600 truncate">{metric.label}</span>
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-gray-900 text-sm">{metric.value}</span>
                 {metric.change !== 0 && (
-                  <Badge 
-                    variant={metric.change > 0 ? 'default' : 'secondary'}
-                    className="text-xs"
-                    aria-label={`${metric.change > 0 ? 'Increase' : 'Decrease'} of ${Math.abs(metric.change)}%`}
-                  >
-                    {metric.change > 0 ? '+' : ''}{metric.change}%
-                  </Badge>
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    metric.change > 0 ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {getTrendIcon(metric.change)} {Math.abs(metric.change)}%
+                  </span>
                 )}
               </div>
-              <div className="space-y-1">
-                <p className="text-2xl font-bold text-gray-900" aria-label={`${metric.value} ${metric.label.toLowerCase()}`}>
-                  {metric.value}
-                </p>
-                <p className="text-sm text-gray-600">{metric.label}</p>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" aria-hidden="true" />
-            Quick Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <Button variant="outline" size="sm" className="h-10" aria-label="View performance trends">
-              <TrendingUp className="h-4 w-4 mr-1" aria-hidden="true" />
-              Trends
-            </Button>
-            <Button variant="outline" size="sm" className="h-10" aria-label="Set personal goals">
-              <Target className="h-4 w-4 mr-1" aria-hidden="true" />
-              Goals
-            </Button>
-            <Button variant="outline" size="sm" className="h-10" aria-label="View schedule">
-              <Calendar className="h-4 w-4 mr-1" aria-hidden="true" />
-              Schedule
-            </Button>
-            <Button variant="outline" size="sm" className="h-10" aria-label="Generate reports">
-              <BarChart3 className="h-4 w-4 mr-1" aria-hidden="true" />
-              Reports
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }

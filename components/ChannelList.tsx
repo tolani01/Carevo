@@ -4,21 +4,29 @@ import { useState } from 'react'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Plus } from 'lucide-react'
+import { NewChatModal } from './NewChatModal'
 
 interface ChannelListProps {
   channels: any[]
   selectedChannel: any
   onChannelSelect: (channel: any) => void
   searchQuery: string
+  onCreateChannel?: (channel: any) => void
 }
 
-export function ChannelList({ channels, selectedChannel, onChannelSelect, searchQuery }: ChannelListProps) {
+export function ChannelList({ channels, selectedChannel, onChannelSelect, searchQuery, onCreateChannel }: ChannelListProps) {
   const [showNewChat, setShowNewChat] = useState(false)
 
   const filteredChannels = channels.filter(channel =>
     channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     channel.lastMessage?.content.toLowerCase().includes(searchQuery.toLowerCase())
   )
+
+  const handleCreateChannel = (newChannel: any) => {
+    if (onCreateChannel) {
+      onCreateChannel(newChannel)
+    }
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -93,6 +101,13 @@ export function ChannelList({ channels, selectedChannel, onChannelSelect, search
           </div>
         )}
       </div>
+
+      {/* New Chat Modal */}
+      <NewChatModal
+        isOpen={showNewChat}
+        onClose={() => setShowNewChat(false)}
+        onCreateChannel={handleCreateChannel}
+      />
     </div>
   )
 }

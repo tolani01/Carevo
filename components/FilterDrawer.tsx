@@ -27,7 +27,7 @@ interface FilterDrawerProps {
 }
 
 const statusOptions = [
-  { value: '', label: 'All Statuses' },
+  { value: 'all', label: 'All Statuses' },
   { value: 'todo', label: 'To Do' },
   { value: 'in-progress', label: 'In Progress' },
   { value: 'waiting', label: 'Waiting' },
@@ -35,7 +35,7 @@ const statusOptions = [
 ]
 
 const typeOptions = [
-  { value: '', label: 'All Types' },
+  { value: 'all', label: 'All Types' },
   { value: 'refill', label: 'Refill' },
   { value: 'pa', label: 'PA' },
   { value: 'lab', label: 'Lab' },
@@ -45,7 +45,7 @@ const typeOptions = [
 ]
 
 const priorityOptions = [
-  { value: '', label: 'All Priorities' },
+  { value: 'all', label: 'All Priorities' },
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },
   { value: 'high', label: 'High' },
@@ -70,18 +70,18 @@ export function FilterDrawer({
   const handleClearAll = () => {
     const clearedFilters = {
       search: '',
-      assignee: '',
-      status: '',
-      type: '',
+      assignee: 'all',
+      status: 'all',
+      type: 'all',
       dueDate: '',
-      priority: ''
+      priority: 'all'
     }
     setFilters(clearedFilters)
     onClearAll()
   }
 
   const getActiveFilterCount = () => {
-    return Object.values(filters).filter(value => value !== '').length
+    return Object.values(filters).filter(value => value !== '' && value !== 'all').length
   }
 
   return (

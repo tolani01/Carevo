@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -63,10 +64,11 @@ export function GlobalHeader({
   showMobileMenu = false,
   onToggleMobileMenu
 }: GlobalHeaderProps) {
+  const pathname = usePathname();
   // Debug logging
   useEffect(() => {
-    console.log('GlobalHeader props:', { overdueCount, mentionCount, userRole });
-  }, [overdueCount, mentionCount, userRole]);
+    console.log('GlobalHeader props:', { overdueCount, mentionCount, userRole, pathname });
+  }, [overdueCount, mentionCount, userRole, pathname]);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
@@ -111,6 +113,27 @@ export function GlobalHeader({
     }
   };
 
+  const handleSearchFocus = () => {
+    setShowSearch(true);
+    if (searchQuery.trim()) {
+      // showResults is managed by useGlobalSearch hook
+    }
+  };
+
+  const handleSearchBlur = (e: React.FocusEvent) => {
+    // Don't close if clicking inside the search results overlay
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && relatedTarget.closest('[data-search-results]')) {
+      return;
+    }
+    
+    // Delay closing to allow for clicks on results
+    setTimeout(() => {
+      setShowSearch(false);
+      // showResults is managed by useGlobalSearch hook
+    }, 150);
+  };
+
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
@@ -134,23 +157,18 @@ export function GlobalHeader({
           break;
       }
     } else {
-      window.location.href = result.url;
+      // Navigate to result with search context
+      const url = new URL(result.url, window.location.origin);
+      url.searchParams.set('from', 'search');
+      if (searchQuery.trim()) {
+        url.searchParams.set('query', searchQuery.trim());
+      }
+      window.location.href = url.toString();
     }
     setShowSearch(false);
     clearSearch();
   };
 
-  const handleSearchFocus = () => {
-    setShowSearch(true);
-    setSearchMode('search');
-  };
-
-  const handleSearchBlur = () => {
-    // Delay hiding to allow for result clicks
-    setTimeout(() => {
-      setShowSearch(false);
-    }, 200);
-  };
 
   // Filter helper functions
   const getActiveFilterCount = () => {
@@ -274,7 +292,7 @@ export function GlobalHeader({
         </div>
 
         {/* Center Section - Search */}
-        <div className="flex-1 max-w-md mx-4 relative z-0">
+        <div className="flex-1 max-w-2xl mx-4 relative z-50">
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
@@ -286,23 +304,57 @@ export function GlobalHeader({
               onChange={handleInputChange}
               onFocus={handleSearchFocus}
               onBlur={handleSearchBlur}
-              className="pl-10 pr-20 relative z-0"
+              className="pl-10 pr-16 relative z-0"
             />
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 z-0 flex items-center space-x-2">
-              {searchMode === 'command' && (
-                <Command className="h-3 w-3 text-purple-600" />
-              )}
-              <kbd className="px-2 py-1 text-xs bg-gray-100 rounded">⌘K</kbd>
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2 z-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onCommandPalette}
+                className="h-8 w-10 p-0 hover:bg-blue-50 rounded-md"
+                aria-label="Add new task or action"
+                title="Add new task or action"
+              >
+                <div className="relative">
+                  {/* Clipboard with visible lines */}
+                  <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5">
+                    {/* Clipboard background */}
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3-7.5H21a3 3 0 013 3V15a3 3 0 01-3 3h-1.5M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm6 0a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    {/* Clipboard body */}
+                    <rect x="6" y="6" width="12" height="14" rx="2" fill="currentColor" fillOpacity="0.1" stroke="currentColor"/>
+                    {/* Clipboard clip */}
+                    <rect x="8" y="2" width="8" height="4" rx="1" fill="currentColor" fillOpacity="0.2" stroke="currentColor"/>
+                    {/* Document lines */}
+                    <line x1="9" y1="10" x2="15" y2="10" stroke="currentColor" strokeWidth="1.5"/>
+                    <line x1="9" y1="13" x2="15" y2="13" stroke="currentColor" strokeWidth="1.5"/>
+                    <line x1="9" y1="16" x2="13" y2="16" stroke="currentColor" strokeWidth="1.5"/>
+                  </svg>
+                  {/* Plus icon overlay */}
+                  <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-3.5 h-3.5 flex items-center justify-center border border-white">
+                    <svg className="h-2.5 w-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                  </div>
+                </div>
+              </Button>
             </div>
           </form>
           
-          {/* Search Results */}
+          {/* Search Results - Overlay */}
           {showSearch && showResults && (
-            <SearchResults
-              query={searchQuery}
-              scope="all"
-              onResultClick={handleResultClick}
-            />
+            <div 
+              className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto"
+              data-search-results
+              onMouseDown={(e) => e.preventDefault()} // Prevent focus loss
+              onClick={(e) => e.stopPropagation()} // Prevent event bubbling
+            >
+              <SearchResults
+                query={searchQuery}
+                scope="all"
+                onResultClick={handleResultClick}
+              />
+            </div>
           )}
         </div>
 
@@ -363,8 +415,8 @@ export function GlobalHeader({
             Click to view unread messages and mentions
           </div>
 
-          {/* New Task Button */}
-          {!isAuditor && (
+          {/* New Task Button - REMOVED ACROSS THE BOARD */}
+          {/* {!isAuditor && (pathname === '/my' || pathname === '/profile') && (
             <Button
               onClick={onNewTask}
               size="sm"
@@ -375,45 +427,32 @@ export function GlobalHeader({
               <Plus className="h-4 w-4 mr-1" aria-hidden="true" />
               New Task
             </Button>
-          )}
+          )} */}
           <div id="new-task-description" className="sr-only">
             Create a new task. You can also press N key for quick access.
           </div>
 
-          {/* Command Palette Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCommandPalette}
-            className="hidden sm:flex min-h-[44px]"
-            aria-label="Open command palette"
-            aria-describedby="command-palette-description"
-          >
-            <Search className="h-4 w-4 mr-1" aria-hidden="true" />
-            <kbd className="text-xs" aria-hidden="true">⌘K</kbd>
-          </Button>
-          <div id="command-palette-description" className="sr-only">
-            Open command palette to search and navigate. Press Cmd+K or Ctrl+K.
-          </div>
 
-          {/* Filter Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilterDrawer(true)}
-            className="flex items-center gap-2 min-h-[44px]"
-            data-testid="filter-button"
-            aria-label="Open filters"
-            aria-describedby="filters-description"
-          >
-            <Filter className="h-4 w-4" />
-            Filters
-            {getActiveFilterCount() > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {getActiveFilterCount()}
-              </Badge>
-            )}
-          </Button>
+          {/* Filter Button - REMOVED ACROSS THE BOARD */}
+          {/* {(pathname === '/my' || pathname === '/profile') && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilterDrawer(true)}
+              className="flex items-center gap-2 min-h-[44px]"
+              data-testid="filter-button"
+              aria-label="Open filters"
+              aria-describedby="filters-description"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {getActiveFilterCount() > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {getActiveFilterCount()}
+                </Badge>
+              )}
+            </Button>
+          )} */}
           <div id="filters-description" className="sr-only">
             Open filter drawer to filter tasks by status, type, priority, and more.
           </div>
@@ -445,7 +484,8 @@ export function GlobalHeader({
           )}
         </div>
         
-        {!isAuditor && (
+        {/* Mobile New Task Button - REMOVED ACROSS THE BOARD */}
+        {/* {!isAuditor && (pathname === '/my' || pathname === '/profile') && (
           <Button
             onClick={onNewTask}
             size="sm"
@@ -454,7 +494,7 @@ export function GlobalHeader({
             <Plus className="h-4 w-4 mr-1" />
             New Task
           </Button>
-        )}
+        )} */}
       </div>
 
       {/* Filter Drawer */}
@@ -466,12 +506,14 @@ export function GlobalHeader({
         onClearAll={handleClearAllFilters}
       />
 
-      {/* Filter Chips */}
-      <FilterChips
-        filters={getFilterChips()}
-        onRemoveFilter={handleRemoveFilter}
-        onClearAll={handleClearAllFilters}
-      />
+      {/* Filter Chips - REMOVED ACROSS THE BOARD */}
+      {/* {(pathname === '/my' || pathname === '/profile') && (
+        <FilterChips
+          filters={getFilterChips()}
+          onRemoveFilter={handleRemoveFilter}
+          onClearAll={handleClearAllFilters}
+        />
+      )} */}
     </header>
   );
 }

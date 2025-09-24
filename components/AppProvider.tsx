@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { GlobalHeader } from '@/components/GlobalHeader';
 import { MobileNavigation } from '@/components/MobileNavigation';
 import { CommandPalette } from '@/components/CommandPalette';
+import { Footer } from '@/components/Footer';
 import { useKeyboardShortcuts } from '@/lib/hooks/use-keyboard-shortcuts';
 import { useRolePermissions, UserRole } from '@/lib/hooks/use-role-permissions';
 import { createClient } from '@/lib/supabase/client';
@@ -43,7 +44,7 @@ export function AppProvider({ children }: AppProviderProps) {
   
   // Supabase auth state
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false); // Force loading to false
   
   // Fallback for test users
   const [testUser, setTestUser] = useState<AuthUser | null>(null);
@@ -166,7 +167,11 @@ export function AppProvider({ children }: AppProviderProps) {
   
   // Only show minimal layout on login page
   if (isLoginPage) {
-    console.log('AppProvider - Rendering login page');
+    // Force close command palette on login page
+    if (showCommandPalette) {
+      setShowCommandPalette(false);
+    }
+    
     return (
       <AppContext.Provider value={contextValue}>
         {children}
@@ -202,7 +207,7 @@ export function AppProvider({ children }: AppProviderProps) {
         )}
 
         {/* Main Content */}
-        <main className="pb-20 md:pb-0">
+        <main className="pb-20 md:pb-8">
           {children}
         </main>
 
@@ -226,6 +231,9 @@ export function AppProvider({ children }: AppProviderProps) {
             }}
           />
         )}
+
+        {/* Footer */}
+        <Footer />
       </div>
     </AppContext.Provider>
   );

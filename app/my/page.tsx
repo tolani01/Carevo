@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTasks } from '@/lib/hooks/use-tasks';
 import { useUrlFilters } from '@/lib/hooks/use-url-filters';
 import { TaskCard } from '@/components/TaskCard';
@@ -11,21 +12,27 @@ import { TaskCalendar } from '@/components/TaskCalendar';
 import { PersonalKPIs } from '@/components/PersonalKPIs';
 import { QuickFilters } from '@/components/QuickFilters';
 import { MobileTaskCard } from '@/components/MobileTaskCard';
+import { FilterDrawer } from '@/components/FilterDrawer';
+import { KPIModal } from '@/components/KPIModal';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/components/AppProvider';
 
 export default function MyTasksPage() {
   console.log('🎯 MyTasksPage rendering...');
   
+  const router = useRouter();
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
   const [view, setView] = useState<'list' | 'calendar'>('list');
   const [timeRange, setTimeRange] = useState<'today' | 'week' | 'month'>('today');
+  const [showFilterDrawer, setShowFilterDrawer] = useState(false);
   const [quickFilters, setQuickFilters] = useState([
     { id: 'today', label: 'Today', count: 5, active: false },
     { id: 'overdue', label: 'Overdue', count: 2, active: false },
     { id: 'this-week', label: 'This Week', count: 12, active: false },
     { id: 'high-priority', label: 'High Priority', count: 3, active: false }
   ]);
+  const [showKPIModal, setShowKPIModal] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<string>('');
   
   const { filters, updateFilters, activeFiltersCount } = useUrlFilters();
   
@@ -63,12 +70,33 @@ export default function MyTasksPage() {
   }
 
   const handleTaskClick = (task: any) => {
-    setSelectedTask(task.id);
+    // Navigate to the dynamic task page
+    router.push(`/task/${task.id}`);
   }
 
   const handleCreateTask = (date: Date) => {
     console.log('Create task for:', date)
     // TODO: Open task creation modal with pre-filled date
+  }
+
+  // KPI click handler
+  const handleKPIClick = (metricId: string) => {
+    setSelectedMetric(metricId);
+    setShowKPIModal(true);
+  };
+
+  const handleAdvancedFilters = () => {
+    setShowFilterDrawer(true);
+  }
+
+  const handleFilterChange = (newFilters: any) => {
+    console.log('Advanced filters changed:', newFilters);
+    // TODO: Apply advanced filters to task list
+  }
+
+  const handleClearAllFilters = () => {
+    console.log('Clearing all filters');
+    // TODO: Clear all advanced filters
   }
 
 
@@ -129,11 +157,13 @@ export default function MyTasksPage() {
   return (
     <div className="flex-1 flex flex-col">
       {/* Personal KPIs */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
+      <div className="bg-white border-b border-gray-200 px-4 py-2">
         <PersonalKPIs
           userId="current-user"
           timeRange={timeRange}
           onTimeRangeChange={setTimeRange}
+          tasks={tasks}
+          onKPIClick={handleKPIClick}
         />
       </div>
       
@@ -144,7 +174,7 @@ export default function MyTasksPage() {
             filters={quickFilters}
             onFilterToggle={handleFilterToggle}
             onClearAll={() => setQuickFilters(prev => prev.map(f => ({ ...f, active: false })))}
-            onAdvancedFilters={() => console.log('Advanced filters')}
+            onAdvancedFilters={handleAdvancedFilters}
           />
           
           <div className="flex gap-2">
@@ -176,7 +206,7 @@ export default function MyTasksPage() {
               <MobileTaskCard
                 key={task.id}
                 task={task}
-                onTaskClick={setSelectedTask}
+                onTaskClick={handleTaskClick}
                 onQuickAction={handleQuickAction}
               />
             ))}
@@ -221,6 +251,33 @@ export default function MyTasksPage() {
         <TaskDrawer
           taskId={selectedTask}
           onClose={() => setSelectedTask(null)}
+        />
+      )}
+
+      {/* Filter Drawer */}
+      <FilterDrawer
+        isOpen={showFilterDrawer}
+        onClose={() => setShowFilterDrawer(false)}
+        activeFilters={{
+          search: '',
+          assignee: 'all',
+          status: 'all',
+          type: 'all',
+          dueDate: '',
+          priority: 'all'
+        }}
+        onFilterChange={handleFilterChange}
+        onClearAll={handleClearAllFilters}
+      />
+
+      {/* KPI Modal */}
+      {showKPIModal && (
+        <KPIModal
+          metricId={selectedMetric}
+          onClose={() => setShowKPIModal(false)}
+          isPersonal={true}
+          timeRange={timeRange}
+          tasks={tasks}
         />
       )}
     </div>
