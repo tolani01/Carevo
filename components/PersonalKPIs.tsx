@@ -60,10 +60,21 @@ export function PersonalKPIs({ userId, timeRange, onTimeRangeChange, tasks = [],
     const { start, end } = getDateRange()
     
     // Filter tasks for the current user and time range
-    const userTasks = tasks.filter(task => 
-      (typeof task.assignee === 'string' && (task.assignee === userId || task.assignee === 'me')) ||
-      (typeof task.assignee === 'object' && task.assignee?.id === userId)
-    )
+    const userTasks = tasks.filter(task => {
+      if (!task.assignee) return false
+      
+      // Handle string assignee (legacy format)
+      if (typeof task.assignee === 'string') {
+        return task.assignee === userId || task.assignee === 'me'
+      }
+      
+      // Handle object assignee (new format)
+      if (typeof task.assignee === 'object' && task.assignee !== null) {
+        return task.assignee.id === userId
+      }
+      
+      return false
+    })
     
     // Calculate metrics
     const completed = userTasks.filter(task => 
