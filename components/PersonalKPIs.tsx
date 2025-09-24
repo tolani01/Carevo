@@ -17,11 +17,14 @@ interface Task {
   id: string
   title: string
   status: string
-  priority: string
-  due_date: string
+  priority?: string
+  due_at?: string | null
   created_at: string
-  completed_at?: string
-  assignee: string
+  completed_at?: string | null
+  assignee?: {
+    id: string
+    name: string
+  }
 }
 
 interface PersonalKPIsProps {
@@ -69,12 +72,14 @@ export function PersonalKPIs({ userId, timeRange, onTimeRangeChange, tasks = [],
 
     const overdue = userTasks.filter(task => 
       task.status !== 'Done' && 
-      new Date(task.due_date) < today
+      task.due_at &&
+      new Date(task.due_at) < today
     ).length
 
     const dueToday = userTasks.filter(task => 
       task.status !== 'Done' && 
-      new Date(task.due_date).toDateString() === today.toDateString()
+      task.due_at &&
+      new Date(task.due_at).toDateString() === today.toDateString()
     ).length
 
     // Calculate average completion time (mock calculation)

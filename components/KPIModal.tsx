@@ -20,11 +20,14 @@ interface Task {
   id: string
   title: string
   status: string
-  priority: string
-  due_date: string
+  priority?: string
+  due_at?: string | null
   created_at: string
-  completed_at?: string
-  assignee: string
+  completed_at?: string | null
+  assignee?: {
+    id: string
+    name: string
+  }
 }
 
 interface KPIModalProps {
@@ -219,7 +222,8 @@ export function KPIModal({ isOpen = true, onClose, metricId, metrics, isPersonal
       case 'overdue':
         const overdueTasks = isPersonal ? tasks.filter(task => 
           task.status !== 'Done' && 
-          new Date(task.due_date) < new Date()
+          task.due_at &&
+          new Date(task.due_at) < new Date()
         ) : []
         return {
           title: 'Your Overdue Tasks',
@@ -242,7 +246,8 @@ export function KPIModal({ isOpen = true, onClose, metricId, metrics, isPersonal
         if (isPersonal) {
           const dueTodayTasks = tasks.filter(task => 
             task.status !== 'Done' && 
-            new Date(task.due_date).toDateString() === new Date().toDateString()
+            task.due_at &&
+            new Date(task.due_at).toDateString() === new Date().toDateString()
           )
           console.log('Due Today Personal KPI:', { dueTodayTasks: dueTodayTasks.length, tasks: tasks.length })
           return {

@@ -81,7 +81,7 @@ export function FilePicker({
     }
 
     setFiles(prev => [...prev, ...newFiles]);
-    onFilesSelect?.(fileList);
+    onFilesSelect?.(Array.from(fileList));
 
     // Simulate upload progress
     newFiles.forEach(fileItem => {
