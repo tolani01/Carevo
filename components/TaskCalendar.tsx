@@ -206,7 +206,7 @@ export function TaskCalendar({ tasks, onTaskClick, onDateClick, onCreateTask }: 
                       key={task.id}
                       className={`
                         text-xs p-1 rounded truncate cursor-pointer
-                        ${getPriorityColor(task.priority)}
+                        ${getPriorityColor(task.priority || 'normal')}
                       `}
                       onClick={(e) => {
                         e.stopPropagation()

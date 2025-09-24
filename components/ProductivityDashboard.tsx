@@ -12,7 +12,7 @@ import {
   Calendar, 
   Clock, 
   Award,
-  Fire,
+  Flame,
   Star,
   BarChart3,
   ExternalLink
@@ -198,7 +198,7 @@ export function ProductivityDashboard({ userId, onViewHistory }: ProductivityDas
                 <p className="text-xs text-gray-500">days</p>
               </div>
               <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <Fire className="h-6 w-6 text-orange-600" />
+                <Flame className="h-6 w-6 text-orange-600" />
               </div>
             </div>
           </CardContent>
@@ -269,7 +269,7 @@ export function ProductivityDashboard({ userId, onViewHistory }: ProductivityDas
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-orange-100 rounded-full flex items-center justify-center">
-              <Fire className="h-5 w-5 text-orange-600" />
+              <Flame className="h-5 w-5 text-orange-600" />
             </div>
             <div>
               <p className="font-medium text-gray-900">{getStreakMessage(stats.currentStreak)}</p>

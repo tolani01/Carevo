@@ -177,8 +177,8 @@ export function useGlobalSearch() {
       .filter(item => 
         item.title.toLowerCase().includes(searchQuery) ||
         item.description.toLowerCase().includes(searchQuery) ||
-        (item.metadata?.assignee && item.metadata.assignee.toLowerCase().includes(searchQuery)) ||
-        (item.metadata?.channel && item.metadata.channel.toLowerCase().includes(searchQuery))
+        (item.metadata && 'assignee' in item.metadata && item.metadata.assignee && item.metadata.assignee.toLowerCase().includes(searchQuery)) ||
+        (item.metadata && 'channel' in item.metadata && item.metadata.channel && item.metadata.channel.toLowerCase().includes(searchQuery))
       )
       .map(item => ({
         id: item.id,

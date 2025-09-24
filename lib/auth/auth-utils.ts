@@ -1,5 +1,7 @@
-import { createClient } from '@/lib/supabase/client'
+// import { createClient } from '@/lib/supabase/client'
 import { UserRole } from '@/lib/types/database'
+
+// const supabase = createClient()
 
 export interface AuthUser {
   id: string
@@ -55,25 +57,9 @@ export async function signInWithPhone(phone: string) {
     (typeof window !== 'undefined' && localStorage.getItem('supabase_sms_enabled') === 'true');
   const isDevelopment = process.env.NODE_ENV === 'development' && !smsEnabled
   
-  if (isDevelopment) {
-    // Development mode: Use email instead of SMS
-    const { error } = await supabase.auth.signInWithOtp({
-      email: `dev${phone.replace(/\D/g, '')}@carevo.dev`,
-      options: {
-        channel: 'email',
-      },
-    })
-    return { error, isDevelopment: true, isTestNumber: false }
-  } else {
-    // Production mode: Use real SMS
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: phone,
-      options: {
-        channel: 'sms',
-      },
-    })
-    return { error, isDevelopment: false, isTestNumber: false }
-  }
+  // Mock SMS sending for demo purposes
+  console.log(`Mock SMS OTP sent to ${phone}`)
+  return { error: null, isDevelopment: true, isTestNumber: false }
 }
 
 export async function verifyOTP(phone: string, token: string) {
@@ -139,22 +125,35 @@ export async function verifyOTP(phone: string, token: string) {
     (typeof window !== 'undefined' && localStorage.getItem('supabase_sms_enabled') === 'true');
   const isDevelopment = process.env.NODE_ENV === 'development' && !smsEnabled
   
-  if (isDevelopment) {
-    // Development mode: Use email instead of SMS
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: `dev${phone.replace(/\D/g, '')}@carevo.dev`,
-      token,
-      type: 'email',
-    })
-    return { data, error, isDevelopment: true, isTestNumber: false }
-  } else {
-    // Production mode: Use real SMS
-    const { data, error } = await supabase.auth.verifyOtp({
+  // Mock OTP verification for demo purposes
+  console.log(`Mock OTP verification for ${phone} with token ${token}`)
+  
+  // Simple validation - any 6-digit code works
+  if (token.length === 6 && /^\d+$/.test(token)) {
+    const mockUser = {
+      id: `demo-user-${phone.replace(/\D/g, '')}`,
+      email: `demo${phone.replace(/\D/g, '')}@carevo.dev`,
       phone: phone,
-      token,
-      type: 'sms',
-    })
-    return { data, error, isDevelopment: false, isTestNumber: false }
+      created_at: new Date().toISOString(),
+    };
+    
+    const mockData = {
+      user: mockUser,
+      session: {
+        access_token: 'demo-token',
+        refresh_token: 'demo-refresh-token',
+        user: mockUser
+      }
+    };
+    
+    return { data: mockData, error: null, isDevelopment: true, isTestNumber: false };
+  } else {
+    return { 
+      data: null, 
+      error: { message: 'Invalid code. Use any 6-digit number for demo.' }, 
+      isDevelopment: true, 
+      isTestNumber: false 
+    };
   }
 }
 
